@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Shapes · LY3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', 'Trebuchet MS', Arial, sans-serif;
+      background: linear-gradient(135deg, #fce4ec 0%, #e8f5e9 50%, #e3f2fd 100%);
+      height: 100vh; height: 100dvh;
+      display: flex; align-items: stretch; justify-content: center;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+    }
+
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc);
+      display: flex; align-items: center; justify-content: center;
+      border: 5px solid #FFD700; z-index: 200; cursor: pointer;
+    }
+    #intro-logo { width: 220px; height: auto; filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5)); animation: logoBounce 2s ease-in-out infinite; }
+    @keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+    #game-screen {
+      display: none; flex-direction: column;
+      width: 100%; max-width: 860px;
+      height: 100%; padding: 12px 12px 80px; overflow-y: auto;
+    }
+
+    .hdr { display:flex; align-items:center; justify-content:space-between; background:white; border-radius:18px; padding:10px 18px; margin-bottom:10px; box-shadow:0 4px 14px rgba(0,0,0,0.1); flex-shrink:0; }
+    .hdr-score { font-size:1.2em; font-weight:bold; color:#4CAF50; min-width:70px; }
+    .hdr-title { font-size:clamp(0.75em,2.5vw,1em); color:#6a0dad; font-weight:bold; text-align:center; }
+    .mute-btn { width:38px; height:38px; border:2px solid #ddd; border-radius:50%; background:white; font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+    .progress-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-shrink:0; }
+    .progress-label { font-size:0.9em; color:#777; white-space:nowrap; }
+    .progress-bar-wrap { flex:1; height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden; }
+    .progress-bar-fill { height:100%; border-radius:5px; background:linear-gradient(90deg,#4CAF50,#8BC34A); transition:width 0.5s ease; }
+
+    .instruction { text-align:center; font-size:clamp(0.9em,3vw,1.1em); color:#333; font-weight:800; margin-bottom:10px; padding:0 4px; flex-shrink:0; line-height:1.4; }
+
+    /* ── MAIN CARD ── */
+    .q-card {
+      background: white; border-radius: 24px; padding: 14px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column; gap: 12px;
+      margin-top: auto; margin-bottom: auto; flex-shrink: 0; width: 100%;
+    }
+
+    /* ── SORT COLUMNS ── */
+    .columns-row { display:flex; gap:10px; width:100%; }
+
+    .drop-col {
+      flex: 1; border: 2.5px dashed #ccc; border-radius: 16px;
+      background: #fafafa; display: flex; flex-direction: column;
+      overflow: hidden; transition: border-color 0.2s, background 0.2s;
+      min-height: 170px;
+    }
+    .drop-col.drag-over {
+      border-color: #4CAF50; border-style: solid;
+      background: #e8f5e9; box-shadow: 0 0 0 4px #4CAF5030;
+    }
+    .drop-col.wrong-col {
+      border-color: #f44336; border-style: solid;
+      background: #ffebee; animation: shakeCol 0.4s ease;
+    }
+    @keyframes shakeCol { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    .drop-col.done-col { border-color: #4CAF50; border-style: solid; background: #f1f8f1; }
+    .drop-col.hint-col { border-color: #FFD700; border-style: solid; background: #fffde7; animation: pulseHint 1s ease-in-out 3; }
+    @keyframes pulseHint { 0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0.5)} 50%{box-shadow:0 0 0 12px rgba(255,215,0,0)} }
+
+    .col-header {
+      background: #f0f0f0; padding: 8px 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      border-bottom: 2px dashed #ddd; flex-shrink: 0;
+    }
+    .col-header svg { width: 36px; height: 36px; }
+    .col-header .col-name { font-size: 0.78em; font-weight: 800; color: #444; }
+    .col-header .col-count { font-size: 0.66em; color: #888; font-weight: 700; }
+
+    .col-zone {
+      flex: 1; padding: 8px; display: flex;
+      flex-wrap: wrap; gap: 6px; align-content: center; justify-content: center;
+      min-height: 90px;
+    }
+
+    /* placed item inside column */
+    .placed-item {
+      width: 58px; height: 58px; background: white; border-radius: 10px;
+      border: 2px solid #4CAF50; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      animation: popIn 0.3s ease;
+    }
+    .placed-item img { width: 42px; height: 42px; object-fit: contain; pointer-events: none; -webkit-user-drag: none; display: block; }
+    @keyframes popIn { 0%{transform:scale(0)} 70%{transform:scale(1.1)} 100%{transform:scale(1)} }
+
+    /* ── OBJECT POOL ── */
+    .obj-pool {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      justify-content: center; padding: 6px 2px 2px;
+      min-height: 88px; border-top: 2px dashed #eee;
+    }
+
+    .obj-item {
+      width: 70px; height: 70px; background: white; border-radius: 12px;
+      border: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: center;
+      cursor: grab; touch-action: none; -webkit-user-drag: none;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.12); will-change: transform;
+      transition: box-shadow 0.15s, opacity 0.2s;
+      flex-shrink: 0;
+    }
+    .obj-item img { width: 52px; height: 52px; object-fit: contain; pointer-events: none; -webkit-user-drag: none; display: block; }
+    .obj-item.dragging { opacity: 0.25; }
+
+    /* ghost following finger */
+    #drag-ghost {
+      position: fixed; z-index: 9999; pointer-events: none;
+      width: 72px; height: 72px; background: white; border-radius: 14px;
+      border: 2.5px solid #FFD700;
+      display: none; align-items: center; justify-content: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      transform: translate(-50%, -50%) scale(1.12);
+    }
+    #drag-ghost img { width: 54px; height: 54px; object-fit: contain; pointer-events: none; -webkit-user-drag: none; display: block; }
+
+    /* ── BOTTOM ── */
+    .btn-restart {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg,#FF9800,#F57C00); color: white;
+      border: none; border-radius: 50px; padding: 14px 36px;
+      font-size: 1.05em; font-family: inherit; font-weight: 800; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(255,152,0,0.4); z-index: 50; white-space: nowrap;
+    }
+
+    #toast { position:fixed; top:20%; left:50%; transform:translateX(-50%) scale(0); color:white; padding:14px 28px; border-radius:50px; font-size:1.5em; font-weight:800; box-shadow:0 6px 24px rgba(0,0,0,0.25); z-index:100; transition:transform 0.2s,opacity 0.2s; opacity:0; pointer-events:none; white-space:nowrap; will-change:transform,opacity; }
+    #toast.show { transform:translateX(-50%) scale(1); opacity:1; }
+
+    .confetti { position:fixed; top:-10px; pointer-events:none; z-index:9998; border-radius:2px; }
+    @keyframes cfFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+
+    #end-screen { display:none; position:fixed; inset:0; background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc); flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:200; padding:30px; }
+    .end-trophy { font-size:4.5em; animation:trophySpin 1.5s ease-out; }
+    @keyframes trophySpin { from{transform:rotate(-20deg) scale(0)} 60%{transform:rotate(10deg) scale(1.1)} to{transform:rotate(0deg) scale(1)} }
+    .end-title { color:#FFD700; font-size:clamp(1.5em,5vw,2.2em); font-weight:bold; text-shadow:0 3px 10px rgba(0,0,0,0.3); text-align:center; }
+    .end-sub { color:rgba(255,255,255,0.9); font-size:1.1em; text-align:center; }
+    .end-score-box { background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.35); border-radius:20px; padding:16px 40px; color:white; font-size:1.8em; font-weight:bold; }
+    .end-stars { font-size:2.2em; letter-spacing:4px; }
+    .btn-play-again { background:#FFD700; color:#333; border:none; border-radius:50px; padding:14px 36px; font-size:1.1em; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 16px rgba(255,215,0,0.5); }
+
+    @media (max-width:768px) {
+      #game-screen { padding:10px 10px 76px; }
+      .hdr-title { display:none; }
+      .q-card { padding:10px; gap:10px; }
+      .drop-col { min-height:150px; }
+    }
+    @media (max-width:480px) {
+      .col-header svg { width:30px; height:30px; }
+      .col-header .col-name { font-size:0.72em; }
+      .placed-item { width:50px; height:50px; }
+      .placed-item svg { width:36px; height:36px; }
+      .obj-item { width:62px; height:62px; }
+      .obj-item svg { width:46px; height:46px; }
+      .drop-col { min-height:130px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="startGame()">
+  <img id="intro-logo" src="assets/innovinelogo.png" alt="Innovine">
+</div>
+
+<div id="toast"></div>
+<div id="drag-ghost"><img id="ghost-img" src="" alt="" draggable="false"></div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-score">⭐ <span id="score-val">0</span> / 8</div>
+    <div class="hdr-title">Shapes</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+  <div class="progress-row">
+    <span class="progress-label">Q <span id="q-num">1</span> / 8</span>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="instruction" id="instruction-txt"></div>
+  <div class="q-card">
+    <div class="columns-row" id="columns-row"></div>
+    <div class="obj-pool" id="obj-pool"></div>
+  </div>
+  <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+</div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">You completed all 8 questions!</div>
+  <div class="end-score-box">Score: &nbsp;<span id="final-score">0</span> / 8</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">▶ &nbsp;Play Again</button>
+</div>
+
+<script>
+/* ── SHAPE HEADER ICONS (shown in column header) ── */
+const HDR_ICON = {
+  circle:     `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="#FF6B6B"/></svg>`,
+  square:     `<svg viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" fill="#54a0ff"/></svg>`,
+  triangle:   `<svg viewBox="0 0 40 40"><polygon points="20,3 37,37 3,37" fill="#f9ca24"/></svg>`,
+  rectangle:  `<svg viewBox="0 0 40 40"><rect x="2" y="11" width="36" height="18" fill="#1dd1a1"/></svg>`,
+  oval:       `<svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="18" ry="11" fill="#a29bfe"/></svg>`,
+  star:       `<svg viewBox="0 0 40 40"><polygon points="20,2 24,14 37,14 27,22 31,36 20,28 9,36 13,22 3,14 16,14" fill="#FF9F43"/></svg>`,
+  semicircle: `<svg viewBox="0 0 40 40"><path d="M4,26 A16,16 0 0,1 36,26 Z" fill="#6c5ce7"/></svg>`,
+};
+
+const SHAPE_LABEL = {
+  circle:'Circle', square:'Square', triangle:'Triangle', rectangle:'Rectangle',
+  oval:'Oval', star:'Star', semicircle:'Semicircle',
+};
+
+/* ── DRAGGABLE OBJECTS ── */
+const N = 'assets/';
+const OBJ_POOL = {
+  circle:     [ N+'pizza.jpg',             N+'button.jpg',              N+'donut.jpg'               ],
+  square:     [ N+'chess%20board.jpg',     N+'square%20pillow.jpg',     N+'biscut.jpg'              ],
+  triangle:   [ N+'pizza%20slice.jpg',     N+'tent.jpg',                N+'chip.jpg'                ],
+  rectangle:  [ N+'board.jpg',             N+'envolop.jpg'                                         ],
+  oval:       [ N+'potato.jpg',            N+'stone%20oval.jpg'                                    ],
+  star:       [ N+'star%20hanging.jpg',    N+'star%20shaped%20ballons.jpg', N+'starfish.jpg'       ],
+  semicircle: [ N+'rainbow.jpg',           N+'arch%20of%20window.jpg',  N+'fan.jpg'                ],
+};
+
+/* Preload all images */
+Object.values(OBJ_POOL).forEach(arr => arr.forEach(src => { new Image().src = src; }));
+
+/* ── QUESTIONS: 8 rounds, each pairs 2 shapes ── */
+const QUESTIONS = [
+  { shapeA:'circle',     idxA:[0,1,2], shapeB:'triangle',   idxB:[0,1]   },
+  { shapeA:'square',     idxA:[0,1,2], shapeB:'oval',       idxB:[0,1]   },
+  { shapeA:'semicircle', idxA:[0,1,2], shapeB:'rectangle',  idxB:[0,1]   },
+  { shapeA:'star',       idxA:[0,1,2], shapeB:'circle',     idxB:[0,1,2] },
+  { shapeA:'triangle',   idxA:[0,1,2], shapeB:'star',       idxB:[0,1,2] },
+  { shapeA:'oval',       idxA:[0,1],   shapeB:'semicircle', idxB:[0,1,2] },
+  { shapeA:'rectangle',  idxA:[0,1],   shapeB:'square',     idxB:[0,1,2] },
+  { shapeA:'circle',     idxA:[0,1,2], shapeB:'semicircle', idxB:[0,1,2] },
+];
+
+const sndCorrect = new Audio('assets/correct.mp3');
+const sndWrong   = new Audio('assets/wrong.mp3');
+const sndClaps   = new Audio('assets/free_claps.mp3');
+
+let curQ = 0, score = 0, muted = false;
+let placedCount = { a:0, b:0 };
+let colTotal    = { a:3,  b:3  };
+let questionOK = true;
+
+/* drag state */
+let dragShape = null, dragSrcEl = null;
+const ghost    = document.getElementById('drag-ghost');
+const ghostImg = document.getElementById('ghost-img');
+
+function unlockAudio() {
+  [sndCorrect, sndWrong, sndClaps].forEach(s => { s.play().catch(()=>{}); s.pause(); s.currentTime = 0; });
+  document.removeEventListener('pointerdown', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio);
+
+function play(s) { if (muted) return; s.currentTime = 0; s.play().catch(()=>{}); }
+
+function speak(text) {
+  sndClaps.pause(); sndClaps.currentTime = 0;
+  if (!('speechSynthesis' in window) || muted) return;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    if (muted) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.7; u.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google'))
+           || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }, 150);
+}
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0; sndClaps.play().catch(()=>{});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+/* ── LOAD QUESTION ── */
+function loadQuestion() {
+  if (curQ >= 8) { showEnd(); return; }
+  placedCount = { a:0, b:0 }; questionOK = true;
+  dragShape = null; dragSrcEl = null; ghost.style.display = 'none';
+
+  const q = QUESTIONS[curQ];
+  colTotal = { a: q.idxA.length, b: q.idxB.length };
+  document.getElementById('q-num').textContent     = curQ + 1;
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('prog-bar').style.width  = (curQ / 8 * 100) + '%';
+  document.getElementById('instruction-txt').textContent =
+    `Drag each shape into the correct group!`;
+
+  /* Build columns */
+  const colRow = document.getElementById('columns-row');
+  colRow.innerHTML = '';
+  ['a','b'].forEach(bin => {
+    const shape = bin === 'a' ? q.shapeA : q.shapeB;
+    const col = document.createElement('div');
+    col.className = 'drop-col'; col.id = `col-${bin}`; col.dataset.shape = shape;
+    col.innerHTML = `
+      <div class="col-header">
+        ${HDR_ICON[shape]}
+        <span class="col-name">${SHAPE_LABEL[shape]}</span>
+        <span class="col-count" id="cnt-${bin}">0 / ${bin === 'a' ? q.idxA.length : q.idxB.length}</span>
+      </div>
+      <div class="col-zone" id="zone-${bin}"></div>`;
+    colRow.appendChild(col);
+  });
+
+  /* Build shuffled pool */
+  const pool = document.getElementById('obj-pool');
+  pool.innerHTML = '';
+  const items = shuffle([
+    ...q.idxA.map(i => ({ shape: q.shapeA, src: OBJ_POOL[q.shapeA][i] })),
+    ...q.idxB.map(i => ({ shape: q.shapeB, src: OBJ_POOL[q.shapeB][i] })),
+  ]);
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'obj-item'; el.dataset.shape = item.shape; el.dataset.src = item.src;
+    const img = document.createElement('img');
+    img.src = item.src; img.alt = item.shape; img.draggable = false;
+    el.appendChild(img);
+    pool.appendChild(el);
+  });
+
+  speak(`Drag the ${SHAPE_LABEL[q.shapeA]}s and ${SHAPE_LABEL[q.shapeB]}s into the correct groups!`);
+}
+
+/* ── DRAG LOGIC — single global listeners (no per-item accumulation) ── */
+function onDragStart(e) {
+  const el = e.target.closest('.obj-item');
+  if (!el) return;
+  e.preventDefault();
+  dragShape = el.dataset.shape;
+  dragSrcEl = el;
+  ghostImg.src = el.dataset.src;
+  ghost.style.display = 'flex';
+  const pt = e.touches ? e.touches[0] : e;
+  moveGhost(pt.clientX, pt.clientY);
+  el.classList.add('dragging');
+  clearColHighlight();
+}
+function onDragMove(e) {
+  if (!dragSrcEl) return;
+  e.preventDefault();
+  const pt = e.touches ? e.touches[0] : e;
+  moveGhost(pt.clientX, pt.clientY);
+  highlightCol(pt.clientX, pt.clientY);
+}
+function onDragEnd(e) {
+  if (!dragSrcEl) return;
+  const pt = e.changedTouches ? e.changedTouches[0] : e;
+  ghost.style.display = 'none';
+  clearColHighlight();
+  const col = getColAt(pt.clientX, pt.clientY);
+  if (col) handleDrop(col);
+  else resetDrag();
+}
+
+/* Attach once to pool — event delegation handles all items */
+const objPool = document.getElementById('obj-pool');
+objPool.addEventListener('mousedown',  onDragStart);
+objPool.addEventListener('touchstart', onDragStart, { passive: false });
+objPool.addEventListener('touchend',   (e) => { e.preventDefault(); }, { passive: false });
+document.addEventListener('mousemove', onDragMove);
+document.addEventListener('mouseup',   onDragEnd);
+document.addEventListener('touchmove', onDragMove, { passive: false });
+document.addEventListener('touchend',  onDragEnd,  { passive: false });
+
+function moveGhost(x, y) {
+  ghost.style.left = x + 'px';
+  ghost.style.top  = y + 'px';
+}
+
+function getColAt(x, y) {
+  for (const col of document.querySelectorAll('.drop-col')) {
+    const r = col.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return col;
+  }
+  return null;
+}
+
+function highlightCol(x, y) {
+  clearColHighlight();
+  const col = getColAt(x, y);
+  if (col && !col.classList.contains('done-col')) col.classList.add('drag-over');
+}
+
+function clearColHighlight() {
+  document.querySelectorAll('.drop-col').forEach(c => c.classList.remove('drag-over'));
+}
+
+function getCorrectBin(shape) {
+  const q = QUESTIONS[curQ];
+  return shape === q.shapeA ? 'a' : 'b';
+}
+
+function placeInColumn(el, shape) {
+  const bin = getCorrectBin(shape);
+  const col = document.getElementById(`col-${bin}`);
+  const placed = document.createElement('div');
+  placed.className = 'placed-item';
+  const img = document.createElement('img');
+  img.src = el.dataset.src; img.alt = shape; img.draggable = false;
+  placed.appendChild(img);
+  document.getElementById(`zone-${bin}`).appendChild(placed);
+  el.remove();
+  placedCount[bin]++;
+  document.getElementById(`cnt-${bin}`).textContent = `${placedCount[bin]} / ${colTotal[bin]}`;
+  if (placedCount[bin] === colTotal[bin]) col.classList.add('done-col');
+  col.classList.remove('hint-col');
+}
+
+function handleDrop(col) {
+  const correct = col.dataset.shape === dragShape;
+  const bin = col.id.replace('col-','');
+  const srcEl = dragSrcEl;
+  const shape  = dragShape;
+  dragSrcEl = null; dragShape = null;
+  srcEl.classList.remove('dragging');
+
+  if (correct) {
+    placeInColumn(srcEl, shape);
+    checkComplete();
+  } else {
+    /* Wrong column — track per-object attempts */
+    questionOK = false;
+    const attempts = parseInt(srcEl.dataset.wrong || '0') + 1;
+    srcEl.dataset.wrong = attempts;
+
+    col.classList.add('wrong-col');
+    setTimeout(() => col.classList.remove('wrong-col'), 500);
+    play(sndWrong);
+
+    if (attempts === 1) {
+      /* 1st wrong: hint — pulse the correct column */
+      showToast('❌ Try again!', '#f44336');
+      const correctBin = getCorrectBin(shape);
+      const correctCol = document.getElementById(`col-${correctBin}`);
+      correctCol.classList.add('hint-col');
+      setTimeout(() => correctCol.classList.remove('hint-col'), 3000);
+    } else {
+      /* 2nd wrong: auto-place THIS object in correct column */
+      showToast('💡 Goes here!', '#FF9800');
+      setTimeout(() => {
+        placeInColumn(srcEl, shape);
+        checkComplete();
+      }, 600);
+    }
+  }
+}
+
+function resetDrag() {
+  if (dragSrcEl) dragSrcEl.classList.remove('dragging');
+  dragSrcEl = null; dragShape = null;
+}
+
+function checkComplete() {
+  if (placedCount.a !== colTotal.a || placedCount.b !== colTotal.b) return;
+  window.speechSynthesis?.cancel();
+  if (questionOK) {
+    score++;
+    document.getElementById('score-val').textContent = score;
+    showToast('⭐ Correct!', '#4CAF50');
+    spawnConfetti();
+  } else {
+    showToast('✅ Well done!', '#FF9800');
+  }
+  playClaps();
+  setTimeout(() => { curQ++; loadQuestion(); }, 3000);
+}
+
+/* ── GAME CONTROL ── */
+function startGame() {
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  curQ = 0; score = 0;
+  loadQuestion();
+}
+
+function restartGame() {
+  window.speechSynthesis?.cancel();
+  document.getElementById('end-screen').style.display  = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  curQ = 0; score = 0; placedCount = {a:0,b:0}; questionOK = true;
+  ghost.style.display = 'none';
+  loadQuestion();
+}
+
+let toastTimer = null;
+function showToast(msg, bg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = bg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+const CC = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#cc5de8','#ff6b81'];
+function spawnConfetti() {
+  for (let i = 0; i < 70; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      const sz = 6 + Math.random()*9;
+      el.style.cssText = `left:${Math.random()*100}vw;width:${sz}px;height:${sz}px;background:${CC[Math.floor(Math.random()*CC.length)]};border-radius:${Math.random()>.4?'50%':'2px'};animation:cfFall ${1.4+Math.random()*1.8}s linear forwards;`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }, i * 22);
+  }
+}
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (muted) { window.speechSynthesis?.cancel(); sndClaps.pause(); }
+  else speak(document.getElementById('instruction-txt').textContent);
+}
+
+function showEnd() {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'flex';
+  document.getElementById('final-score').textContent   = score;
+  document.getElementById('end-stars').textContent = score >= 7 ? '⭐⭐⭐' : score >= 5 ? '⭐⭐' : '⭐';
+  window.speechSynthesis?.cancel();
+  playClaps(); spawnConfetti(); setTimeout(spawnConfetti, 800);
+}
+</script>
+</body>
+</html>
