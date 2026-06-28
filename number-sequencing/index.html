@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Number Sequencing 1–50 · LY3 · Game 32</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Nunito',Arial,sans-serif;background:linear-gradient(135deg,#fce4ec 0%,#e8f5e9 50%,#e3f2fd 100%);height:100vh;height:100dvh;display:flex;align-items:stretch;justify-content:center;overflow:hidden;user-select:none;-webkit-user-select:none}
+
+    /* ── INTRO ── */
+    #intro-screen{position:fixed;inset:0;background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc);display:flex;align-items:center;justify-content:center;border:5px solid #FFD700;z-index:200;cursor:pointer}
+    #intro-logo{width:220px;height:auto;filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5));animation:logoBounce 2s ease-in-out infinite}
+    @keyframes logoBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+
+    /* ── GAME SCREEN ── */
+    #game-screen{display:none;flex-direction:column;width:100%;max-width:860px;height:100%;padding:12px 14px 76px;overflow-y:auto}
+
+    .hdr{display:flex;align-items:center;justify-content:space-between;background:white;border-radius:18px;padding:10px 18px;margin-bottom:10px;box-shadow:0 4px 14px rgba(0,0,0,0.1);flex-shrink:0}
+    .hdr-score{font-size:1.1em;font-weight:bold;color:#4CAF50;min-width:80px}
+    .hdr-title{font-size:clamp(0.72em,2.4vw,0.95em);color:#6a0dad;font-weight:bold;text-align:center}
+    .mute-btn{width:38px;height:38px;border:2px solid #ddd;border-radius:50%;background:white;font-size:1.1em;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+    .progress-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-shrink:0}
+    .progress-label{font-size:0.85em;color:#777;white-space:nowrap}
+    .progress-bar-wrap{flex:1;height:10px;background:#e0e0e0;border-radius:5px;overflow:hidden}
+    .progress-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#4CAF50,#8BC34A);transition:width 0.5s ease}
+
+    .instruction{text-align:center;font-size:clamp(0.9em,2.8vw,1.1em);color:#555;font-weight:800;margin-bottom:8px;flex-shrink:0}
+
+    /* ── Q-CARD ── */
+    .q-card{background:white;border-radius:24px;padding:20px 16px 24px;box-shadow:0 6px 24px rgba(0,0,0,0.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;flex:1;min-height:0;overflow:hidden}
+
+    .range-badge{font-size:clamp(0.9em,2.6vw,1.1em);color:#7b1fa2;font-weight:800;background:#f3e5f5;border-radius:20px;padding:7px 20px}
+
+    /* ── SEQUENCE ROW ── */
+    .seq-row{display:flex;gap:clamp(6px,2vw,14px);justify-content:center;align-items:center;width:100%;flex-wrap:nowrap}
+
+    .seq-cell{width:clamp(52px,13.5vw,82px);height:clamp(52px,13.5vw,82px);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:clamp(1.2em,4vw,2.1em);font-weight:800;flex-shrink:0}
+
+    /* fixed number */
+    .seq-number{background:linear-gradient(135deg,#9c27b0,#6a1b9a);color:white;box-shadow:0 4px 10px rgba(106,27,154,0.35)}
+
+    /* blank slot — default pulsing */
+    .seq-slot{border:3px dashed #bdbdbd;background:#fdf6ff;cursor:default;position:relative;animation:slotPulse 1.8s ease-in-out infinite}
+    .seq-slot::after{content:'?';color:#d1b3e8;font-size:1.1em;font-weight:800}
+
+    /* drag-over highlight */
+    .seq-slot.drag-over{border-color:#43A047;border-style:solid;background:#e8f5e9;animation:none;box-shadow:0 0 0 5px rgba(67,160,71,0.25)}
+    .seq-slot.drag-over::after{content:'↓';color:#43A047}
+
+    /* hint — gold pulsing after 1st wrong (matches game4 hint style) */
+    .seq-slot.hint{border-style:solid;border-color:#FFD700;background:#fffde7;animation:slotHint 1s ease-in-out infinite}
+    .seq-slot.hint::after{content:'👆';font-size:1em}
+    @keyframes slotHint{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0)}50%{box-shadow:0 0 0 10px rgba(255,215,0,0.55)}}
+
+    /* wrong flash */
+    .seq-slot.wrong-flash{animation:slotWrong 0.4s ease}
+    @keyframes slotWrong{0%,100%{background:#fdf6ff;border-color:#bdbdbd}40%{background:#ffebee;border-color:#e53935;border-style:solid}}
+
+    /* correctly filled */
+    .seq-slot.filled{border-style:solid;border-color:transparent;color:white;animation:slotFill 0.42s cubic-bezier(.17,.89,.32,1.28) forwards}
+    .seq-slot.filled::after{display:none}
+
+    /* auto-placed (orange, no score) */
+    .seq-slot.auto-placed{border-color:#FF9800 !important}
+
+    @keyframes slotPulse{0%,100%{border-color:#bdbdbd;transform:scale(1)}50%{border-color:#ce93d8;transform:scale(1.07)}}
+    @keyframes slotFill{0%{transform:scale(0.45);opacity:0.5}65%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+
+    /* ── DRAG SECTION ── */
+    .drag-section{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
+    .drag-label{font-size:clamp(0.78em,2vw,0.9em);color:#bbb;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+    .drag-area{display:flex;gap:clamp(14px,3.5vw,24px);justify-content:center;flex-wrap:nowrap}
+
+    .drag-card{width:clamp(64px,16.5vw,100px);height:clamp(64px,16.5vw,100px);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:clamp(1.7em,5.5vw,2.8em);font-weight:800;color:white;cursor:grab;box-shadow:0 6px 18px rgba(0,0,0,0.28);touch-action:none;transition:opacity 0.2s,transform 0.2s,box-shadow 0.15s;flex-shrink:0}
+    .drag-card:hover{transform:translateY(-5px) scale(1.07);box-shadow:0 12px 24px rgba(0,0,0,0.3)}
+    .drag-card.is-dragging{opacity:0.2;transform:scale(0.93);cursor:grabbing}
+    .drag-card.placed{opacity:0;pointer-events:none;transform:scale(0.3) translateY(-16px)}
+    .drag-card.shake{animation:cardShake 0.42s ease}
+    @keyframes cardShake{0%,100%{transform:translateX(0) rotate(0)}20%{transform:translateX(-11px) rotate(-5deg)}40%{transform:translateX(11px) rotate(5deg)}60%{transform:translateX(-7px) rotate(-3deg)}80%{transform:translateX(7px) rotate(3deg)}}
+
+    /* ── GHOST ── */
+    #drag-ghost{display:none;position:fixed;z-index:999;pointer-events:none;border-radius:20px;align-items:center;justify-content:center;font-family:'Nunito',Arial,sans-serif;font-weight:800;color:white;transform:scale(1.12) rotate(4deg);box-shadow:0 14px 36px rgba(0,0,0,0.4)}
+
+    /* Card colors */
+    .c0{background:linear-gradient(135deg,#FF7043,#E64A19)}
+    .c1{background:linear-gradient(135deg,#26C6DA,#0097A7)}
+    .c2{background:linear-gradient(135deg,#FFB300,#FF8F00)}
+    .c3{background:linear-gradient(135deg,#66BB6A,#388E3C)}
+    .cauto{background:linear-gradient(135deg,#FFA726,#EF6C00)}
+
+    /* ── TOAST ── */
+    #toast{position:fixed;top:18%;left:50%;transform:translateX(-50%) scale(0.7);padding:14px 30px;border-radius:50px;font-size:1.5em;font-weight:bold;color:white;pointer-events:none;opacity:0;transition:opacity 0.2s,transform 0.2s;z-index:500;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+    #toast.show{opacity:1;transform:translateX(-50%) scale(1)}
+
+    /* confetti */
+    .confetti{position:fixed;pointer-events:none;z-index:9998;border-radius:2px}
+
+    /* ── BOTTOM BAR ── */
+    .bottom-row{display:flex;justify-content:center;position:fixed;bottom:16px;left:0;right:0;z-index:50;pointer-events:none}
+    .btn-restart{pointer-events:all;background:linear-gradient(135deg,#FF9800,#F57C00);color:white;border:none;padding:12px 30px;border-radius:40px;font-size:1em;font-family:inherit;font-weight:bold;cursor:pointer;box-shadow:0 5px 14px rgba(255,152,0,0.4);touch-action:manipulation;min-height:44px}
+
+    /* ── END SCREEN ── */
+    #end-screen{display:none;position:fixed;inset:0;background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc);flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:200;text-align:center;padding:30px}
+    .end-trophy{font-size:4.5em;animation:trophySpin 1.5s ease-out}
+    @keyframes trophySpin{from{transform:rotate(-20deg) scale(0)}60%{transform:rotate(10deg) scale(1.1)}to{transform:rotate(0) scale(1)}}
+    .end-title{color:#FFD700;font-size:clamp(1.5em,5vw,2.2em);font-weight:bold;text-shadow:0 3px 10px rgba(0,0,0,0.3)}
+    .end-sub{color:rgba(255,255,255,0.9);font-size:1.1em}
+    .end-score-box{background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.35);border-radius:20px;padding:16px 40px;color:white;font-size:1.8em;font-weight:bold}
+    .end-stars{font-size:2.2em;letter-spacing:4px}
+    .btn-play-again{background:#FFD700;color:#333;border:none;padding:15px 44px;border-radius:40px;font-size:1.2em;font-family:inherit;font-weight:bold;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.2);margin-top:8px;touch-action:manipulation;min-height:44px}
+
+    @media(max-width:768px){.hdr-title{display:none}}
+    @media(max-width:480px){
+      #game-screen{padding:8px 10px 72px}
+      .hdr{padding:8px 12px;margin-bottom:6px}
+      .q-card{padding:14px 12px 18px;gap:16px}
+      .seq-cell{width:clamp(44px,11vw,66px);height:clamp(44px,11vw,66px);font-size:clamp(1em,3.4vw,1.8em);border-radius:10px}
+      .drag-card{width:clamp(56px,15vw,82px);height:clamp(56px,15vw,82px);font-size:clamp(1.4em,4.8vw,2.3em);border-radius:15px}
+    }
+    @media(max-height:640px){
+      .q-card{gap:14px;padding:12px 12px 16px}
+      .seq-cell{width:clamp(40px,10vw,60px);height:clamp(40px,10vw,60px);font-size:clamp(0.9em,3vw,1.6em)}
+      .drag-card{width:clamp(52px,13vw,74px);height:clamp(52px,13vw,74px);font-size:clamp(1.2em,4.2vw,2em)}
+      .drag-section{gap:6px}
+      .range-badge{padding:4px 14px;font-size:clamp(0.8em,2.2vw,0.95em)}
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="startGame()">
+  <img id="intro-logo" src="Assets/innovinelogo.png" alt="Innovine" onerror="this.style.display='none'">
+</div>
+
+<div id="toast"></div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-score">⭐ <span id="score-val">0</span> / 20</div>
+    <div class="hdr-title">Number Sequencing 1–50 · LY3</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+
+  <div class="progress-row">
+    <span class="progress-label">Q <span id="step-num">1</span> / 10</span>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <div class="instruction">🔢 Drag the missing numbers into the right box!</div>
+
+  <div class="q-card" id="q-card">
+    <div class="range-badge" id="range-badge">Numbers 1 – 5</div>
+    <div class="seq-row" id="seq-row"></div>
+    <div class="drag-section">
+      <div class="drag-label">↓ drag these numbers ↓</div>
+      <div class="drag-area" id="drag-area"></div>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+  </div>
+</div>
+
+<div id="drag-ghost"></div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">You completed number sequencing 1 to 50!</div>
+  <div class="end-score-box">Score: &nbsp;<span id="final-score">0</span> / 20</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">▶ &nbsp;Play Again</button>
+</div>
+
+<script>
+const QUESTIONS = [
+  { full:[1,2,3,4,5],      blanks:[1,4] },
+  { full:[6,7,8,9,10],     blanks:[0,3] },
+  { full:[11,12,13,14,15], blanks:[1,3] },
+  { full:[16,17,18,19,20], blanks:[0,4] },
+  { full:[21,22,23,24,25], blanks:[2,4] },
+  { full:[26,27,28,29,30], blanks:[0,2] },
+  { full:[31,32,33,34,35], blanks:[1,4] },
+  { full:[36,37,38,39,40], blanks:[0,3] },
+  { full:[41,42,43,44,45], blanks:[2,4] },
+  { full:[46,47,48,49,50], blanks:[0,2] },
+];
+
+const CARD_COLORS = ['c0','c1','c2','c3'];
+
+/* ── Audio (same as game4) ── */
+const sndCorrect = new Audio('Assets/correct.mp3');
+const sndWrong   = new Audio('Assets/wrong.mp3');
+const sndClaps   = new Audio('Assets/free_claps.mp3');
+const allSounds  = [sndCorrect, sndWrong, sndClaps];
+
+function unlockAudio() {
+  allSounds.forEach(s => { s.play().catch(()=>{}); s.pause(); s.currentTime = 0; });
+  document.removeEventListener('pointerdown', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio);
+
+function play(s) { if (muted) return; s.currentTime = 0; s.play().catch(()=>{}); }
+
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0;
+  sndClaps.play().catch(()=>{});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+
+/* ── TTS (same as game4) ── */
+function speak(text) {
+  sndClaps.pause(); sndClaps.currentTime = 0;
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  if (muted) return;
+  setTimeout(() => {
+    if (muted) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.82; u.pitch = 1.1; u.volume = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find(x => x.lang.startsWith('en') && !x.name.includes('Google'))
+           || voices.find(x => x.lang.startsWith('en')) || voices[0];
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }, 150);
+}
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+
+/* ── Toast (same as game4) ── */
+let toastTimer = null;
+function showToast(msg, bg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.background = bg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+/* ── Confetti (same as game4) ── */
+const CC = ['#FFD700','#FF6B6B','#4CAF50','#2196F3','#FF9800','#AB47BC','#26C6DA'];
+function spawnConfetti() {
+  for (let i = 0; i < 70; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      const sz = 6 + Math.random() * 9;
+      el.style.cssText = `left:${Math.random()*100}vw;top:-12px;width:${sz}px;height:${sz}px;background:${CC[Math.floor(Math.random()*CC.length)]};border-radius:${Math.random()>.4?'50%':'2px'};animation:cfFall ${1.4+Math.random()*1.8}s linear forwards`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }, i * 22);
+  }
+}
+if (!document.querySelector('#cf-style')) {
+  const s = document.createElement('style'); s.id = 'cf-style';
+  s.textContent = '@keyframes cfFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(105vh) rotate(540deg);opacity:0}}';
+  document.head.appendChild(s);
+}
+
+/* ── Game state ── */
+let curQ = 0, score = 0, placedCount = 0, muted = false, locked = false;
+let numColorMap = {};
+let wrongCounts = {};
+
+/* ── Drag state ── */
+let dragging = null;
+const ghost = document.getElementById('drag-ghost');
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ── Ghost helpers ── */
+function showGhost(x, y, w, h, fontSize, colorClass, text) {
+  ghost.className = colorClass;
+  ghost.textContent = text;
+  ghost.style.cssText = `display:flex;width:${w}px;height:${h}px;font-size:${fontSize};left:${x}px;top:${y}px;`;
+}
+function moveGhost(x, y) { ghost.style.left = x + 'px'; ghost.style.top = y + 'px'; }
+function hideGhost() { ghost.style.display = 'none'; }
+
+function slotUnder(cx, cy) {
+  ghost.style.display = 'none';
+  const el = document.elementFromPoint(cx, cy);
+  return el ? el.closest('.seq-slot:not(.filled)') : null;
+}
+
+/* ── Game flow ── */
+function startGame() {
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  curQ = 0; score = 0;
+  document.getElementById('score-val').textContent = 0;
+  loadQuestion();
+}
+
+function loadQuestion() {
+  const q = QUESTIONS[curQ];
+  placedCount = 0;
+  locked = false;
+  wrongCounts = {};
+
+  const missingNums = q.blanks.map(i => q.full[i]);
+  const colorPerm = shuffle([0,1,2,3]).slice(0, missingNums.length);
+  numColorMap = {};
+  missingNums.forEach((n, i) => { numColorMap[n] = CARD_COLORS[colorPerm[i]]; });
+
+  document.getElementById('step-num').textContent   = curQ + 1;
+  document.getElementById('prog-bar').style.width   = ((curQ / QUESTIONS.length) * 100) + '%';
+  document.getElementById('score-val').textContent  = score;
+  document.getElementById('range-badge').textContent = `Numbers ${q.full[0]} – ${q.full[q.full.length-1]}`;
+
+  /* Sequence row */
+  const seqRow = document.getElementById('seq-row');
+  seqRow.innerHTML = '';
+  q.full.forEach((n, i) => {
+    const cell = document.createElement('div');
+    if (q.blanks.includes(i)) {
+      cell.className = 'seq-cell seq-slot';
+      cell.dataset.expects = String(n);
+    } else {
+      cell.className = 'seq-cell seq-number';
+      cell.textContent = n;
+    }
+    seqRow.appendChild(cell);
+  });
+
+  /* Drag cards */
+  const dragArea = document.getElementById('drag-area');
+  dragArea.innerHTML = '';
+  shuffle([...missingNums]).forEach(n => {
+    const card = document.createElement('div');
+    card.className = `drag-card ${numColorMap[n]}`;
+    card.id = `card-${n}`;
+    card.textContent = n;
+    card.addEventListener('pointerdown', e => onPointerDown(e, n));
+    dragArea.appendChild(card);
+  });
+
+  speak('Drag the missing numbers in the right place!');
+}
+
+/* ── Drag & Drop ── */
+function onPointerDown(e, num) {
+  if (locked) return;
+  e.preventDefault();
+  const card = document.getElementById(`card-${num}`);
+  if (!card || card.classList.contains('placed')) return;
+
+  const rect = card.getBoundingClientRect();
+  showGhost(rect.left, rect.top, rect.width, rect.height,
+            getComputedStyle(card).fontSize, numColorMap[num], num);
+  card.classList.add('is-dragging');
+
+  dragging = { num, cardEl: card, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+
+  window.addEventListener('pointermove', onPointerMove, { passive: false });
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', abortDrag);
+}
+
+function onPointerMove(e) {
+  if (!dragging) return;
+  e.preventDefault();
+  moveGhost(e.clientX - dragging.offsetX, e.clientY - dragging.offsetY);
+
+  const slot = slotUnder(e.clientX, e.clientY);
+  ghost.style.display = 'flex';
+
+  document.querySelectorAll('.seq-slot:not(.filled)').forEach(s => s.classList.remove('drag-over'));
+  if (slot) slot.classList.add('drag-over');
+}
+
+function onPointerUp(e) {
+  if (!dragging) return;
+  const { num, cardEl } = dragging;
+
+  const slot = slotUnder(e.clientX, e.clientY);
+  document.querySelectorAll('.seq-slot').forEach(s => s.classList.remove('drag-over'));
+  cleanupDrag();
+
+  if (slot && slot.dataset.expects === String(num)) {
+    /* ✓ CORRECT — matches game4's registerCorrect() */
+    cardEl.classList.remove('is-dragging');
+    cardEl.classList.add('placed');
+    slot.classList.remove('hint');
+    slot.textContent = num;
+    slot.classList.add('filled', numColorMap[num]);
+
+    score++;
+    document.getElementById('score-val').textContent = score;
+    window.speechSynthesis?.cancel();
+    showToast('⭐ Correct!', '#4CAF50');
+    placedCount++;
+
+    if (placedCount === QUESTIONS[curQ].blanks.length) {
+      locked = true;
+      spawnConfetti();
+      playClaps();                            /* free_claps.mp3 only on round complete */
+      setTimeout(() => {
+        curQ++;
+        if (curQ < QUESTIONS.length) loadQuestion();
+        else showEnd();
+      }, 3200);                              /* same 3200ms delay as game4 */
+    }
+
+  } else {
+    /* ✗ WRONG — matches game4's registerWrong() */
+    cardEl.classList.remove('is-dragging');
+    wrongCounts[num] = (wrongCounts[num] || 0) + 1;
+
+    if (wrongCounts[num] === 1) {
+      /* 1st wrong: shake, flash slot, show hint after 800ms (game4 timing) */
+      if (slot) {
+        slot.classList.add('wrong-flash');
+        setTimeout(() => slot.classList.remove('wrong-flash'), 420);
+      }
+      cardEl.classList.remove('shake');
+      void cardEl.offsetWidth;
+      cardEl.classList.add('shake');
+      setTimeout(() => cardEl.classList.remove('shake'), 430);
+
+      play(sndWrong);
+      showToast('❌ Try again!', '#f44336');
+
+      /* show hint on correct slot after 800ms (game4 timing) */
+      setTimeout(() => {
+        const correctSlot = document.querySelector(`.seq-slot[data-expects="${num}"]:not(.filled)`);
+        if (correctSlot) {
+          correctSlot.classList.remove('drag-over', 'wrong-flash');
+          correctSlot.classList.add('hint');
+        }
+      }, 800);
+
+    } else {
+      /* 2nd wrong: auto-place after 1000ms, advance after 3000ms (game4 timing) */
+      play(sndWrong);
+      showToast('❌ Wrong!', '#f44336');
+
+      setTimeout(() => {
+        const correctSlot = document.querySelector(`.seq-slot[data-expects="${num}"]:not(.filled)`);
+        if (correctSlot) {
+          cardEl.classList.add('placed');
+          correctSlot.classList.remove('hint', 'drag-over', 'wrong-flash');
+          correctSlot.textContent = num;
+          correctSlot.classList.add('filled', 'auto-placed', 'cauto');
+
+          showToast('💡 Correct answer!', '#FF9800');
+          placedCount++;
+
+          if (placedCount === QUESTIONS[curQ].blanks.length) {
+            locked = true;
+            setTimeout(() => {
+              curQ++;
+              if (curQ < QUESTIONS.length) loadQuestion();
+              else showEnd();
+            }, 3000);                        /* 3000ms after auto-correct, same as game4 */
+          }
+        }
+      }, 1000);                              /* 1000ms delay, same as game4 */
+    }
+  }
+}
+
+function abortDrag() {
+  if (!dragging) return;
+  dragging.cardEl.classList.remove('is-dragging');
+  document.querySelectorAll('.seq-slot').forEach(s => s.classList.remove('drag-over'));
+  cleanupDrag();
+}
+
+function cleanupDrag() {
+  hideGhost();
+  dragging = null;
+  window.removeEventListener('pointermove', onPointerMove);
+  window.removeEventListener('pointerup', onPointerUp);
+  window.removeEventListener('pointercancel', abortDrag);
+}
+
+/* ── Mute (same as game4) ── */
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (muted) { window.speechSynthesis?.cancel(); sndClaps.pause(); }
+  else { speak('Drag the missing numbers in the right place!'); }
+}
+
+/* ── End (same as game4) ── */
+function showEnd() {
+  document.getElementById('prog-bar').style.width = '100%';
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'flex';
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('end-stars').textContent =
+    score >= 18 ? '⭐⭐⭐' : score >= 12 ? '⭐⭐' : '⭐';
+  playClaps();
+  spawnConfetti();
+  setTimeout(spawnConfetti, 800);
+}
+
+function restartGame() {
+  window.speechSynthesis?.cancel();
+  document.getElementById('end-screen').style.display  = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  curQ = 0; score = 0;
+  document.getElementById('score-val').textContent = 0;
+  loadQuestion();
+}
+</script>
+</body>
+</html>
