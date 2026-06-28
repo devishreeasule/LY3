@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Days of the Week · LY3 · Game 22</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', 'Trebuchet MS', Arial, sans-serif;
+      background: linear-gradient(135deg, #fce4ec 0%, #e8f5e9 50%, #e3f2fd 100%);
+      height: 100vh; height: 100dvh;
+      display: flex; align-items: stretch; justify-content: center;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+    }
+
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc);
+      display: flex; align-items: center; justify-content: center;
+      border: 5px solid #FFD700; z-index: 200; cursor: pointer;
+    }
+    #intro-logo { width: 220px; height: auto; filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5)); animation: logoBounce 2s ease-in-out infinite; }
+    @keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+    #game-screen {
+      display: none; flex-direction: column;
+      width: 100%; max-width: 860px; height: 100%; padding: 14px 14px 76px;
+      overflow-y: auto;
+    }
+
+    .hdr { display:flex; align-items:center; justify-content:space-between; background:white; border-radius:18px; padding:10px 18px; margin-bottom:10px; box-shadow:0 4px 14px rgba(0,0,0,0.1); flex-shrink:0; }
+    .hdr-score { font-size:1.2em; font-weight:bold; color:#4CAF50; min-width:70px; }
+    .hdr-title { font-size:clamp(0.75em,2.5vw,1em); color:#6a0dad; font-weight:bold; text-align:center; }
+    .mute-btn { width:38px; height:38px; border:2px solid #ddd; border-radius:50%; background:white; font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+    .progress-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-shrink:0; }
+    .progress-label { font-size:0.9em; color:#777; white-space:nowrap; }
+    .progress-bar-wrap { flex:1; height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden; }
+    .progress-bar-fill { height:100%; border-radius:5px; background:linear-gradient(90deg,#4CAF50,#8BC34A); transition:width 0.5s ease; }
+
+    .instruction { text-align:center; font-size:clamp(0.95em,3vw,1.15em); color:#333; font-weight:800; margin-bottom:10px; padding:0 6px; line-height:1.4; flex-shrink:0; }
+
+    .q-card {
+      background: white; border-radius: 24px; padding: 20px 14px 16px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column; align-items: center; gap: 18px;
+      margin-top: auto; margin-bottom: auto; flex-shrink: 0; width: 100%;
+    }
+
+    /* ── TRAIN SCENE ── */
+    .train-scene {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .train-body {
+      display: flex;
+      align-items: flex-end;
+      width: 100%;
+      gap: 0;
+    }
+
+    /* Locomotive SVG wrapper */
+    .loco-wrap {
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      margin-right: 0;
+    }
+    .loco-svg { width: clamp(54px,14vw,80px); height: auto; display: block; }
+
+    /* Coupler between loco/carriages */
+    .coupler {
+      width: clamp(6px,1.5vw,10px);
+      height: 8px;
+      background: #555;
+      border-radius: 2px;
+      align-self: center;
+      margin-bottom: 18px;
+      flex-shrink: 0;
+    }
+
+    /* Carriage */
+    .carriage-wrap {
+      flex: 1; min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .carriage-body {
+      border-radius: 10px 10px 0 0;
+      padding: 8px 3px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: clamp(0.58em, 2.5vw, 0.9em);
+      min-height: 72px;
+      gap: 3px;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15);
+    }
+    .carriage-body .c-emoji { font-size: clamp(1.1em, 4vw, 1.5em); line-height: 1; }
+    .carriage-body .c-name  { line-height: 1.2; text-align: center; word-break: break-word; }
+
+    .carriage-blank-body {
+      border-radius: 10px 10px 0 0;
+      border: 3px dashed #bbb;
+      border-bottom: none;
+      background: #f5f5f5;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(1.8em, 6vw, 2.4em);
+      font-weight: 800;
+      color: #bbb;
+    }
+    .carriage-blank-body.filled {
+      border-style: solid;
+      border-color: #4CAF50;
+      border-bottom: none;
+      background: #4CAF50;
+      color: white;
+      font-size: clamp(0.58em, 2.5vw, 0.9em);
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .carriage-undercarriage {
+      background: #37474F;
+      border-radius: 0 0 4px 4px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 8px;
+    }
+    .wheel {
+      width: clamp(14px,3.5vw,20px);
+      height: clamp(14px,3.5vw,20px);
+      background: radial-gradient(circle at 35% 35%, #90A4AE, #455A64);
+      border-radius: 50%;
+      border: 2px solid #263238;
+      margin-bottom: -8px;
+    }
+
+    /* Track */
+    .track-row {
+      width: 100%;
+      height: 14px;
+      position: relative;
+      margin-top: 4px;
+    }
+    .track-rail {
+      position: absolute;
+      left: 0; right: 0;
+      height: 4px;
+      background: #78909C;
+      border-radius: 2px;
+    }
+    .track-rail.top    { top: 1px; }
+    .track-rail.bottom { bottom: 1px; }
+    .track-sleepers {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      gap: clamp(6px, 2vw, 12px);
+      overflow: hidden;
+    }
+    .sleeper {
+      width: 8px; flex-shrink: 0;
+      height: 100%;
+      background: #8D6E63;
+      border-radius: 2px;
+    }
+
+    /* ── CHOICES ── */
+    .choices-row { display:flex; gap:10px; width:100%; justify-content:center; }
+
+    .choice-btn {
+      flex: 1; max-width: 160px; min-height: 68px;
+      padding: 10px 6px; border: 4px solid transparent; border-radius: 16px;
+      font-size: clamp(0.78em,2.8vw,1em); font-weight: 800; font-family: inherit;
+      cursor: pointer; color: white;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      transition: transform 0.1s, border-color 0.2s;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    }
+    .choice-btn .cb-emoji { font-size: 1.4em; }
+    .choice-btn:active { transform: scale(0.93); }
+    .choice-btn.correct { border-color:#4CAF50 !important; box-shadow:0 0 0 6px rgba(76,175,80,0.45) !important; animation:popCorrect 0.35s ease; }
+    .choice-btn.wrong   { border-color:#f44336; animation:shakeWrong 0.4s ease; }
+    .choice-btn.hint    { border-color:#FFD700; animation:pulseHint 1s ease-in-out infinite; }
+
+    @keyframes popCorrect { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+    @keyframes shakeWrong { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+    @keyframes pulseHint  { 0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0.6)} 50%{box-shadow:0 0 0 14px rgba(255,215,0,0)} }
+
+    .bottom-row { display:flex; justify-content:center; position:fixed; bottom:16px; left:0; right:0; z-index:50; pointer-events:none; }
+    .btn-restart { pointer-events:all; background:linear-gradient(135deg,#FF9800,#F57C00); color:white; border:none; padding:12px 32px; border-radius:40px; font-size:1em; font-family:inherit; font-weight:bold; cursor:pointer; box-shadow:0 5px 14px rgba(255,152,0,0.4); }
+
+    #toast { position:fixed; top:18%; left:50%; transform:translateX(-50%) scale(0.7); padding:14px 30px; border-radius:50px; font-size:1.4em; font-weight:bold; color:white; pointer-events:none; opacity:0; transition:opacity 0.2s,transform 0.2s; z-index:500; white-space:nowrap; box-shadow:0 8px 24px rgba(0,0,0,0.2); }
+    #toast.show { opacity:1; transform:translateX(-50%) scale(1); }
+
+    .confetti { position:fixed; pointer-events:none; z-index:9998; border-radius:2px; }
+
+    #end-screen { display:none; position:fixed; inset:0; background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc); flex-direction:column; align-items:center; justify-content:center; gap:16px; z-index:200; text-align:center; padding:30px; }
+    .end-trophy { font-size:4.5em; animation:trophySpin 1.5s ease-out; }
+    @keyframes trophySpin { from{transform:rotate(-20deg) scale(0)} 60%{transform:rotate(10deg) scale(1.1)} to{transform:rotate(0) scale(1)} }
+    .end-title  { color:#FFD700; font-size:clamp(1.5em,5vw,2.2em); font-weight:bold; text-shadow:0 3px 10px rgba(0,0,0,0.3); }
+    .end-sub    { color:rgba(255,255,255,0.9); font-size:1.1em; }
+    .end-score-box { background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.35); border-radius:20px; padding:16px 40px; color:white; font-size:1.8em; font-weight:bold; }
+    .end-stars  { font-size:2.2em; letter-spacing:4px; }
+    .btn-play-again { background:#FFD700; color:#333; border:none; padding:15px 45px; border-radius:40px; font-size:1.2em; font-family:inherit; font-weight:bold; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.2); margin-top:8px; }
+
+    @media (max-width: 768px) {
+      #game-screen { padding: 10px 10px 76px; }
+      .hdr-title { display: none; }
+      .q-card { padding: 16px 10px 12px; gap: 14px; }
+    }
+    @media (max-width: 480px) {
+      .carriage-body, .carriage-blank-body { min-height: 62px; }
+      .choice-btn { min-height: 58px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="startGame()">
+  <img id="intro-logo" src="assets/innovinelogo.png" alt="Innovine" onerror="this.style.display='none'">
+</div>
+
+<div id="toast"></div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-score">⭐ <span id="score-val">0</span> / 8</div>
+    <div class="hdr-title">Days of the Week</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+  <div class="progress-row">
+    <span class="progress-label">Q <span id="q-num">1</span> / 8</span>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="instruction" id="instruction-txt"></div>
+  <div class="q-card" id="q-card"></div>
+  <div class="bottom-row">
+    <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+  </div>
+</div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">You completed all 8 questions!</div>
+  <div class="end-score-box">Score: &nbsp;<span id="final-score">0</span> / 8</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">▶ &nbsp;Play Again</button>
+</div>
+
+<script>
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const DAY_COLOR = {
+  Monday:'#E53935', Tuesday:'#FF6F00', Wednesday:'#F9A825',
+  Thursday:'#2E7D32', Friday:'#1565C0', Saturday:'#6A1B9A', Sunday:'#C62828'
+};
+const DAY_EMOJI = {
+  Monday:'📚', Tuesday:'🏃', Wednesday:'🎨',
+  Thursday:'🎵', Friday:'🎉', Saturday:'⚽', Sunday:'🏠'
+};
+
+const QUESTIONS = [
+  { carriages:['Wednesday','Thursday',null], answer:'Friday'   },
+  { carriages:[null,'Friday','Saturday'],    answer:'Thursday' },
+  { carriages:['Sunday',null,'Tuesday'],     answer:'Monday'   },
+  { carriages:['Monday',null,'Wednesday'],   answer:'Tuesday'  },
+  { carriages:['Friday','Saturday',null],    answer:'Sunday'   },
+  { carriages:[null,'Monday','Tuesday'],     answer:'Sunday'   },
+  { carriages:['Thursday',null,'Saturday'],  answer:'Friday'   },
+  { carriages:['Tuesday','Wednesday',null],  answer:'Thursday' },
+];
+
+let curQ = 0, score = 0, attempts = 0, answered = false, muted = false;
+
+const sndWrong = new Audio('assets/wrong.mp3');
+const sndClaps = new Audio('assets/free_claps.mp3');
+
+function unlockAudio() {
+  [sndWrong, sndClaps].forEach(s => { s.play().catch(()=>{}); s.pause(); s.currentTime = 0; });
+  document.removeEventListener('pointerdown', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio);
+
+function play(s) { if (muted) return; window.speechSynthesis?.cancel(); s.currentTime = 0; s.play().catch(()=>{}); }
+
+function speak(text) {
+  sndClaps.pause(); sndClaps.currentTime = 0;
+  if (!('speechSynthesis' in window) || muted) return;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    if (muted) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.7; u.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google'))
+           || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }, 150);
+}
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0; sndClaps.play().catch(()=>{});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+
+function locoSVG() {
+  return `<svg class="loco-svg" viewBox="0 0 90 78" xmlns="http://www.w3.org/2000/svg">
+    <!-- chimney -->
+    <rect x="10" y="4" width="11" height="16" rx="3" fill="#37474F"/>
+    <rect x="8"  y="4" width="15" height="5"  rx="2" fill="#546E7A"/>
+    <!-- smoke puffs -->
+    <circle cx="15" cy="2" r="3" fill="rgba(200,200,200,0.7)"/>
+    <circle cx="20" cy="1" r="2" fill="rgba(200,200,200,0.5)"/>
+    <!-- boiler body -->
+    <rect x="4" y="20" width="56" height="30" rx="10" fill="#E53935"/>
+    <rect x="4" y="20" width="56" height="30" rx="10" fill="url(#boilerGrad)"/>
+    <!-- boiler bands -->
+    <rect x="22" y="20" width="4" height="30" rx="1" fill="rgba(0,0,0,0.15)"/>
+    <rect x="38" y="20" width="4" height="30" rx="1" fill="rgba(0,0,0,0.15)"/>
+    <!-- front light -->
+    <circle cx="8"  cy="32" r="6" fill="#FFF9C4" stroke="#F9A825" stroke-width="2"/>
+    <circle cx="8"  cy="32" r="3" fill="#FFD700"/>
+    <!-- cab -->
+    <rect x="54" y="14" width="32" height="36" rx="5" fill="#C62828"/>
+    <!-- cab window -->
+    <rect x="58" y="18" width="22" height="14" rx="4" fill="#B3E5FC" stroke="#90CAF9" stroke-width="1.5"/>
+    <!-- cab door -->
+    <rect x="60" y="34" width="10" height="16" rx="3" fill="rgba(0,0,0,0.2)"/>
+    <!-- underframe -->
+    <rect x="2" y="50" width="84" height="8" rx="3" fill="#263238"/>
+    <!-- coupling hook -->
+    <rect x="84" y="52" width="6" height="4" rx="1" fill="#546E7A"/>
+    <!-- big drive wheel -->
+    <circle cx="50" cy="62" r="13" fill="#455A64" stroke="#263238" stroke-width="2.5"/>
+    <circle cx="50" cy="62" r="6"  fill="#78909C"/>
+    <circle cx="50" cy="62" r="2"  fill="#CFD8DC"/>
+    <!-- small front wheel -->
+    <circle cx="18" cy="64" r="10" fill="#455A64" stroke="#263238" stroke-width="2"/>
+    <circle cx="18" cy="64" r="4"  fill="#78909C"/>
+    <circle cx="18" cy="64" r="1.5" fill="#CFD8DC"/>
+    <defs>
+      <linearGradient id="boilerGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(255,255,255,0.18)"/>
+        <stop offset="100%" stop-color="rgba(0,0,0,0.12)"/>
+      </linearGradient>
+    </defs>
+  </svg>`;
+}
+
+function carriageHTML(day, isBlank) {
+  if (isBlank) {
+    return `<div class="carriage-wrap">
+      <div class="carriage-blank-body" id="blank-carriage">?</div>
+      <div class="carriage-undercarriage">
+        <div class="wheel"></div>
+        <div class="wheel"></div>
+      </div>
+    </div>`;
+  }
+  return `<div class="carriage-wrap">
+    <div class="carriage-body" style="background:${DAY_COLOR[day]}">
+      <span class="c-emoji">${DAY_EMOJI[day]}</span>
+      <span class="c-name">${day}</span>
+    </div>
+    <div class="carriage-undercarriage">
+      <div class="wheel"></div>
+      <div class="wheel"></div>
+    </div>
+  </div>`;
+}
+
+function trackHTML() {
+  const sleepers = Array.from({length: 30}, () => `<div class="sleeper"></div>`).join('');
+  return `<div class="track-row">
+    <div class="track-sleepers">${sleepers}</div>
+    <div class="track-rail top"></div>
+    <div class="track-rail bottom"></div>
+  </div>`;
+}
+
+function buildTrain(q) {
+  const cars = q.carriages.map(day =>
+    carriageHTML(day, day === null)
+  );
+  const withCouplers = cars.reduce((acc, car, i) => {
+    acc.push(car);
+    if (i < cars.length - 1) acc.push(`<div class="coupler"></div>`);
+    return acc;
+  }, []);
+
+  return `<div class="train-scene">
+    <div class="train-body">
+      <div class="loco-wrap">${locoSVG()}</div>
+      <div class="coupler"></div>
+      ${withCouplers.join('')}
+    </div>
+    ${trackHTML()}
+  </div>`;
+}
+
+function buildChoices(q) {
+  const wrong = DAYS.filter(d => d !== q.answer && !q.carriages.includes(d));
+  const picked = shuffle(wrong).slice(0, 2);
+  const choices = shuffle([q.answer, ...picked]);
+  return choices.map(day =>
+    `<button class="choice-btn" data-choice="${day}"
+      style="background:${DAY_COLOR[day]}"
+      onclick="selectAnswer('${day}')">
+      <span class="cb-emoji">${DAY_EMOJI[day]}</span>
+      <span>${day}</span>
+    </button>`
+  ).join('');
+}
+
+function getInstruction(q) {
+  const blankIdx = q.carriages.indexOf(null);
+  if (blankIdx === 0) return `Which day comes BEFORE ${q.carriages[1]}?`;
+  if (blankIdx === 2) return `Which day comes AFTER ${q.carriages[1]}?`;
+  return `Which day comes BETWEEN ${q.carriages[0]} and ${q.carriages[2]}?`;
+}
+
+function loadQuestion() {
+  if (curQ >= QUESTIONS.length) { showEnd(); return; }
+  answered = false; attempts = 0;
+
+  const q = QUESTIONS[curQ];
+  const instr = getInstruction(q);
+
+  document.getElementById('q-num').textContent     = curQ + 1;
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('prog-bar').style.width  = (curQ / QUESTIONS.length * 100) + '%';
+  document.getElementById('instruction-txt').textContent = instr;
+  speak(instr);
+
+  document.getElementById('q-card').innerHTML =
+    buildTrain(q) +
+    `<div class="choices-row" id="choices-row">${buildChoices(q)}</div>`;
+}
+
+function fillBlank(day) {
+  const el = document.getElementById('blank-carriage');
+  if (!el) return;
+  el.className = 'carriage-blank-body filled';
+  el.innerHTML = `<span class="c-emoji">${DAY_EMOJI[day]}</span><span class="c-name">${day}</span>`;
+}
+
+function selectAnswer(choice) {
+  if (answered) return;
+  const q = QUESTIONS[curQ];
+  const correctBtn = document.querySelector(`#choices-row [data-choice="${q.answer}"]`);
+  const chosenBtn  = document.querySelector(`#choices-row [data-choice="${choice}"]`);
+
+  if (choice === q.answer) {
+    answered = true;
+    document.querySelectorAll('.choice-btn').forEach(b => { b.style.pointerEvents = 'none'; b.classList.remove('hint','wrong'); });
+    chosenBtn.classList.add('correct');
+    fillBlank(q.answer);
+    if (!attempts) score++;
+    document.getElementById('score-val').textContent = score;
+    window.speechSynthesis?.cancel();
+    playClaps();
+    showToast('⭐ Correct!', '#4CAF50');
+    spawnConfetti();
+    setTimeout(() => { curQ++; loadQuestion(); }, 3000);
+  } else {
+    attempts++;
+    chosenBtn.classList.add('wrong');
+    play(sndWrong);
+    if (attempts === 1) {
+      showToast('❌ Try again!', '#f44336');
+      setTimeout(() => {
+        chosenBtn.classList.remove('wrong');
+        if (!answered) correctBtn.classList.add('hint');
+      }, 900);
+    } else {
+      answered = true;
+      showToast('❌ Wrong!', '#f44336');
+      setTimeout(() => {
+        document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('correct','wrong','hint'));
+        correctBtn.classList.add('correct');
+        fillBlank(q.answer);
+        showToast('💡 Correct answer!', '#FF9800');
+        setTimeout(() => { curQ++; loadQuestion(); }, 3000);
+      }, 1000);
+    }
+  }
+}
+
+function startGame() {
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  curQ = 0; score = 0;
+  loadQuestion();
+}
+
+function restartGame() {
+  window.speechSynthesis?.cancel();
+  document.getElementById('end-screen').style.display  = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  curQ = 0; score = 0; attempts = 0; answered = false;
+  loadQuestion();
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let toastTimer = null;
+function showToast(msg, bg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.background = bg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+const CC = ['#FFD700','#FF6B6B','#4CAF50','#2196F3','#FF9800','#AB47BC','#26C6DA'];
+function spawnConfetti() {
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      const sz = 6 + Math.random() * 9;
+      el.style.cssText = `left:${Math.random()*100}vw;top:-12px;width:${sz}px;height:${sz}px;background:${CC[Math.floor(Math.random()*CC.length)]};border-radius:${Math.random()>.4?'50%':'2px'};animation:cfFall ${1.4+Math.random()*1.8}s linear forwards;`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }, i * 22);
+  }
+}
+if (!document.querySelector('#cf-style')) {
+  const s = document.createElement('style'); s.id = 'cf-style';
+  s.textContent = `@keyframes cfFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(105vh) rotate(540deg);opacity:0}}`;
+  document.head.appendChild(s);
+}
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (muted) { window.speechSynthesis?.cancel(); sndClaps.pause(); }
+  else speak(document.getElementById('instruction-txt').textContent);
+}
+
+function showEnd() {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'flex';
+  document.getElementById('final-score').textContent   = score;
+  document.getElementById('end-stars').textContent = score >= 7 ? '⭐⭐⭐' : score >= 5 ? '⭐⭐' : '⭐';
+  window.speechSynthesis?.cancel();
+  playClaps(); spawnConfetti(); setTimeout(spawnConfetti, 800);
+}
+</script>
+</body>
+</html>
