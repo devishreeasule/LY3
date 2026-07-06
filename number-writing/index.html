@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Number Writing · LY3 · Game 33</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', Arial, sans-serif;
+      background: linear-gradient(135deg, #fce4ec 0%, #e8f5e9 50%, #e3f2fd 100%);
+      height: 100vh; height: 100dvh;
+      display: flex; align-items: stretch; justify-content: center;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+    }
+
+    /* ── INTRO ── */
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc);
+      display: flex; align-items: center; justify-content: center;
+      border: 5px solid #FFD700; z-index: 200; cursor: pointer;
+    }
+    #intro-logo { width: 220px; filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5)); animation: logoBounce 2s ease-in-out infinite; opacity: 0; -webkit-user-drag: none; }
+    #intro-logo.loaded { opacity: 1; transition: opacity 0.3s; }
+    @keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+
+    /* ── GAME SCREEN ── */
+    #game-screen {
+      display: none; flex-direction: column;
+      width: 100%; max-width: 860px;
+      height: 100%; padding: 12px 14px 76px; overflow-y: auto;
+    }
+
+    .hdr { display:flex; align-items:center; justify-content:space-between; background:white; border-radius:18px; padding:10px 18px; margin-bottom:10px; box-shadow:0 4px 14px rgba(0,0,0,0.1); flex-shrink:0; }
+    .hdr-score { font-size:1.1em; font-weight:bold; color:#4CAF50; min-width:80px; }
+    .hdr-title { font-size:clamp(0.72em,2.4vw,0.95em); color:#6a0dad; font-weight:bold; text-align:center; }
+    .mute-btn { width:38px; height:38px; border:2px solid #ddd; border-radius:50%; background:white; font-size:1.1em; cursor:pointer; display:flex; align-items:center; justify-content:center; touch-action:manipulation; min-height:44px; }
+
+    .progress-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-shrink:0; }
+    .progress-label { font-size:0.85em; color:#777; white-space:nowrap; }
+    .progress-bar-wrap { flex:1; height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden; }
+    .progress-bar-fill { height:100%; border-radius:5px; background:linear-gradient(90deg,#4CAF50,#8BC34A); transition:width 0.5s ease; }
+
+    .instruction { text-align:center; font-size:clamp(0.92em,2.8vw,1.15em); color:#555; font-weight:800; margin-bottom:8px; flex-shrink:0; line-height:1.4; }
+
+    /* ── Q-CARD ── */
+    .q-card {
+      background: white; border-radius: 24px; padding: 24px 16px 24px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      margin-top: auto; margin-bottom: auto; flex-shrink: 0;
+    }
+
+    /* ── CANVAS AREA ── */
+    .canvas-wrap {
+      position: relative;
+      width: min(360px, 84vw, 50vh);
+      height: min(360px, 84vw, 50vh);
+      border-radius: 18px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.13);
+      border: 3px solid #e3e8f5;
+      flex-shrink: 0;
+    }
+    .canvas-wrap canvas {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      border-radius: 15px;
+    }
+    #guide-canvas { background: white; }
+    #draw-canvas  { background: transparent; cursor: crosshair; touch-action: none; }
+    #hint-canvas  { background: transparent; pointer-events: none; }
+
+    /* ── BUTTONS ── */
+    .btn-row { display:flex; gap:14px; justify-content:center; }
+
+    .btn-clear {
+      background: linear-gradient(135deg,#ff7675,#d63031);
+      color: white; border: none; border-radius: 50px;
+      padding: 12px 24px; font-size: 1em; font-family: inherit;
+      font-weight: 800; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(214,48,49,0.3);
+      touch-action: manipulation; min-height: 44px;
+      transition: transform 0.12s, opacity 0.2s;
+    }
+    .btn-clear:active { transform: scale(0.96); }
+
+    .btn-check {
+      background: linear-gradient(135deg,#00b894,#00cec9);
+      color: white; border: none; border-radius: 50px;
+      padding: 12px 28px; font-size: 1em; font-family: inherit;
+      font-weight: 800; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,184,148,0.38);
+      touch-action: manipulation; min-height: 44px;
+      transition: transform 0.12s, opacity 0.2s;
+    }
+    .btn-check:active { transform: scale(0.96); }
+    .btn-check:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
+
+    .btn-restart { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#FF9800,#F57C00); color:white; border:none; border-radius:50px; padding:12px 30px; font-size:1em; font-family:inherit; font-weight:800; cursor:pointer; box-shadow:0 4px 16px rgba(255,152,0,0.4); z-index:50; white-space:nowrap; touch-action:manipulation; min-height:44px; }
+
+    /* ── TOAST ── */
+    #toast { position:fixed; top:20%; left:50%; transform:translateX(-50%) scale(0); color:white; padding:14px 28px; border-radius:50px; font-size:1.4em; font-weight:800; box-shadow:0 6px 24px rgba(0,0,0,0.25); z-index:500; transition:transform 0.2s,opacity 0.2s; opacity:0; pointer-events:none; white-space:nowrap; }
+    #toast.show { transform:translateX(-50%) scale(1); opacity:1; }
+
+    /* ── CONFETTI ── */
+    .confetti-piece { position:fixed; top:-10px; pointer-events:none; z-index:999; animation:confettiFall linear forwards; }
+    @keyframes confettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+
+    /* ── END SCREEN ── */
+    #end-screen { display:none; position:fixed; inset:0; background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc); flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:150; padding:30px; }
+    .end-trophy { font-size:4.5em; animation:trophySpin 1.5s ease-out; }
+    @keyframes trophySpin { from{transform:rotate(-20deg) scale(0)} 60%{transform:rotate(10deg) scale(1.1)} to{transform:rotate(0deg) scale(1)} }
+    .end-title { color:#FFD700; font-size:clamp(1.5em,5vw,2.2em); font-weight:bold; text-shadow:0 3px 10px rgba(0,0,0,0.3); text-align:center; }
+    .end-sub   { color:rgba(255,255,255,0.9); font-size:1.1em; text-align:center; }
+    .end-score-box { background:rgba(255,255,255,0.15); border-radius:16px; padding:12px 28px; color:white; font-size:1.4em; font-weight:bold; }
+    .end-stars { font-size:2.2em; letter-spacing:4px; }
+    .btn-play-again { background:#FFD700; color:#333; border:none; border-radius:50px; padding:14px 36px; font-size:1.1em; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 16px rgba(255,215,0,0.5); touch-action:manipulation; min-height:44px; }
+
+    @media(max-width:768px){ .hdr-title{ display:none; } }
+    @media(max-width:480px){
+      #game-screen{ padding:8px 8px 72px; }
+      .q-card{ padding:16px 10px 18px; gap:14px; }
+      .canvas-wrap{ width:min(300px,85vw,42vh); height:min(300px,85vw,42vh); }
+    }
+    @media(max-height:640px){
+      .canvas-wrap{ width:min(240px,72vw,36vh); height:min(240px,72vw,36vh); }
+      .q-card{ gap:12px; padding:14px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="startGame()">
+  <img id="intro-logo" src="Assets/innovinelogo.png" alt="Innovine" draggable="false" onerror="this.style.display='none'" onload="this.classList.add('loaded')">
+</div>
+<div id="toast"></div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-score">⭐ <span id="score-val">0</span> / 10</div>
+    <div class="hdr-title">Number Writing · LY3</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+  <div class="progress-row">
+    <span class="progress-label">Q <span id="q-num">1</span> / 10</span>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="instruction" id="instruction-txt">✏️ Trace the number!</div>
+
+  <div class="q-card">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="guide-canvas" width="400" height="400"></canvas>
+      <canvas id="draw-canvas"  width="400" height="400"></canvas>
+      <canvas id="hint-canvas"  width="400" height="400"></canvas>
+    </div>
+    <div class="btn-row">
+      <button class="btn-clear" onclick="clearDrawing()">🗑 Clear</button>
+      <button class="btn-check" id="btn-check" onclick="checkAnswer()" disabled>✓ Check</button>
+    </div>
+  </div>
+
+  <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+</div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">You wrote all the numbers 1 to 10!</div>
+  <div class="end-score-box">Score: &nbsp;<span id="final-score">0</span> / 10</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">▶ &nbsp;Play Again</button>
+</div>
+
+<script>
+/* ── NUMBERS 1–10 ── */
+const NUMBERS = [1,2,3,4,5,6,7,8,9,10];
+const TOTAL   = NUMBERS.length;
+
+/*
+ * HINT_PATHS: normalized [x, y] coords (0–1) tracing each number's stroke.
+ * Used for the animated dot hint after the first wrong attempt.
+ * Coords are relative to the 400×400 canvas space.
+ */
+const HINT_PATHS = {
+  1:  [[0.47,0.14],[0.5,0.25],[0.5,0.38],[0.5,0.52],[0.5,0.66],[0.5,0.82],[0.5,0.9]],
+  2:  [[0.32,0.24],[0.44,0.13],[0.62,0.13],[0.7,0.26],[0.65,0.4],[0.52,0.52],[0.38,0.66],[0.3,0.8],[0.3,0.87],[0.68,0.87]],
+  3:  [[0.32,0.18],[0.5,0.11],[0.68,0.22],[0.68,0.37],[0.53,0.49],[0.68,0.61],[0.7,0.77],[0.52,0.88],[0.34,0.83]],
+  4:  [[0.58,0.13],[0.44,0.34],[0.3,0.55],[0.27,0.6],[0.7,0.6],[0.58,0.6],[0.58,0.73],[0.58,0.88]],
+  5:  [[0.65,0.13],[0.35,0.13],[0.35,0.28],[0.35,0.43],[0.52,0.41],[0.68,0.53],[0.7,0.69],[0.58,0.85],[0.37,0.83]],
+  6:  [[0.63,0.16],[0.46,0.1],[0.31,0.26],[0.26,0.45],[0.25,0.64],[0.35,0.82],[0.54,0.88],[0.7,0.76],[0.69,0.6],[0.49,0.53],[0.31,0.6]],
+  7:  [[0.28,0.13],[0.7,0.13],[0.63,0.3],[0.53,0.49],[0.45,0.67],[0.4,0.86]],
+  8:  [[0.5,0.11],[0.65,0.19],[0.69,0.33],[0.59,0.46],[0.5,0.5],[0.38,0.56],[0.3,0.69],[0.35,0.83],[0.5,0.89],[0.65,0.83],[0.7,0.69],[0.61,0.56],[0.5,0.5],[0.38,0.43],[0.31,0.3],[0.38,0.17],[0.5,0.11]],
+  9:  [[0.5,0.13],[0.65,0.22],[0.7,0.38],[0.63,0.52],[0.49,0.58],[0.33,0.5],[0.29,0.36],[0.38,0.2],[0.52,0.13],[0.68,0.5],[0.68,0.71],[0.56,0.87]],
+  10: [[0.23,0.18],[0.23,0.34],[0.23,0.5],[0.23,0.67],[0.23,0.85],
+       [0.61,0.15],[0.73,0.28],[0.77,0.5],[0.73,0.72],[0.61,0.85],[0.49,0.72],[0.45,0.5],[0.49,0.28],[0.61,0.15]],
+};
+
+/* ── AUDIO ── */
+const sndWrong = new Audio('Assets/wrong.mp3');
+const sndClaps = new Audio('Assets/free_claps.mp3');
+
+function unlockAudio() {
+  [sndWrong, sndClaps].forEach(s => { s.play().catch(() => {}); s.pause(); s.currentTime = 0; });
+  document.removeEventListener('pointerdown', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio);
+
+function play(s) { if (muted) return; s.currentTime = 0; s.play().catch(() => {}); }
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0; sndClaps.play().catch(() => {});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+
+/* ── TTS ── */
+function getVoice() {
+  const v = window.speechSynthesis.getVoices();
+  return v.find(x => x.lang.startsWith('en') && !x.name.includes('Google'))
+      || v.find(x => x.lang.startsWith('en')) || v[0];
+}
+function speak(text) {
+  if (!('speechSynthesis' in window) || muted) return;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    if (muted) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.7; u.pitch = 1.1; u.volume = 1;
+    const v = getVoice(); if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }, 150);
+}
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+
+/* ── CANVAS SETUP ── */
+const guideCanvas = document.getElementById('guide-canvas');
+const drawCanvas  = document.getElementById('draw-canvas');
+const hintCanvas  = document.getElementById('hint-canvas');
+const guideCtx    = guideCanvas.getContext('2d');
+const drawCtx     = drawCanvas.getContext('2d');
+const hintCtx     = hintCanvas.getContext('2d');
+
+/* Offscreen canvas – solid rendering for pixel-coverage detection */
+const offCanvas = document.createElement('canvas');
+offCanvas.width = 400; offCanvas.height = 400;
+const offCtx = offCanvas.getContext('2d');
+
+const CW = 400, CH = 400; // canvas logical dimensions
+
+/* ── GUIDE RENDERING ── */
+function getFontSize(num) { return num === 10 ? 230 : 310; }
+
+function drawGuide(num) {
+  guideCtx.clearRect(0, 0, CW, CH);
+  const fs   = getFontSize(num);
+  const font = `900 ${fs}px 'Nunito', Arial, sans-serif`;
+
+  guideCtx.save();
+  guideCtx.font = font;
+  guideCtx.textAlign = 'center';
+  guideCtx.textBaseline = 'middle';
+
+  /* Faint fill */
+  guideCtx.fillStyle = 'rgba(190,200,240,0.32)';
+  guideCtx.fillText(String(num), CW / 2, CH / 2);
+
+  /* Dashed stroke outline */
+  guideCtx.setLineDash([20, 16]);
+  guideCtx.lineWidth = 10;
+  guideCtx.strokeStyle = 'rgba(140,155,215,0.55)';
+  guideCtx.strokeText(String(num), CW / 2, CH / 2);
+  guideCtx.setLineDash([]);
+  guideCtx.restore();
+}
+
+function buildOffscreen(num) {
+  offCtx.clearRect(0, 0, CW, CH);
+  const fs   = getFontSize(num);
+  const font = `900 ${fs}px 'Nunito', Arial, sans-serif`;
+  offCtx.save();
+  offCtx.font = font;
+  offCtx.textAlign = 'center';
+  offCtx.textBaseline = 'middle';
+  /* Fill only — matches exactly what the child sees as the guide shape.
+     No extra thick stroke so detection pixels don't extend beyond the visual guide. */
+  offCtx.fillStyle = 'black';
+  offCtx.fillText(String(num), CW / 2, CH / 2);
+  offCtx.restore();
+}
+
+/* ── HINT OVERLAY (static — replaces guide with orange version) ── */
+function stopHintAnim() {
+  hintCtx.clearRect(0, 0, CW, CH);
+}
+
+function showHintOverlay(num) {
+  /* Redraw the entire guide canvas in bright orange so it's unmistakably different */
+  guideCtx.clearRect(0, 0, CW, CH);
+  const fs   = getFontSize(num);
+  const font = `900 ${fs}px 'Nunito', Arial, sans-serif`;
+
+  guideCtx.save();
+  guideCtx.font = font;
+  guideCtx.textAlign = 'center';
+  guideCtx.textBaseline = 'middle';
+
+  /* Orange fill */
+  guideCtx.fillStyle = 'rgba(255,165,0,0.30)';
+  guideCtx.fillText(String(num), CW / 2, CH / 2);
+
+  /* Orange dashed stroke */
+  guideCtx.setLineDash([20, 16]);
+  guideCtx.lineWidth = 12;
+  guideCtx.strokeStyle = 'rgba(255,120,0,0.85)';
+  guideCtx.strokeText(String(num), CW / 2, CH / 2);
+  guideCtx.setLineDash([]);
+  guideCtx.restore();
+}
+
+/* Draw the correct answer in orange on the draw canvas */
+function showCorrectAnswer(num) {
+  drawCtx.clearRect(0, 0, CW, CH);
+  drawCtx.save();
+  drawCtx.font = `900 ${getFontSize(num)}px 'Nunito', Arial, sans-serif`;
+  drawCtx.textAlign = 'center';
+  drawCtx.textBaseline = 'middle';
+  drawCtx.fillStyle = 'rgba(255,140,0,0.55)';
+  drawCtx.fillText(String(num), CW / 2, CH / 2);
+  drawCtx.lineWidth = 10;
+  drawCtx.strokeStyle = 'rgba(230,100,0,0.7)';
+  drawCtx.strokeText(String(num), CW / 2, CH / 2);
+  drawCtx.restore();
+}
+
+/* ── DRAW EVENTS ── */
+let isDrawing = false;
+let hasDrawn  = false;
+let lastX = 0, lastY = 0;
+
+function getPos(e) {
+  const rect   = drawCanvas.getBoundingClientRect();
+  const scaleX = CW / rect.width;
+  const scaleY = CH / rect.height;
+  const src    = (e.touches && e.touches.length) ? e.touches[0] : e;
+  return {
+    x: (src.clientX - rect.left) * scaleX,
+    y: (src.clientY - rect.top)  * scaleY,
+  };
+}
+
+drawCanvas.addEventListener('pointerdown', e => {
+  if (answered) return;
+  e.preventDefault();
+  drawCanvas.setPointerCapture(e.pointerId);
+  isDrawing = true;
+  const p = getPos(e);
+  lastX = p.x; lastY = p.y;
+
+  /* Small start dot */
+  drawCtx.beginPath();
+  drawCtx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+  drawCtx.fillStyle = 'rgba(33,150,243,0.85)';
+  drawCtx.fill();
+
+  hasDrawn = true;
+  document.getElementById('btn-check').disabled = false;
+});
+
+drawCanvas.addEventListener('pointermove', e => {
+  if (!isDrawing || answered) return;
+  e.preventDefault();
+  const p = getPos(e);
+
+  drawCtx.beginPath();
+  drawCtx.moveTo(lastX, lastY);
+  drawCtx.lineTo(p.x, p.y);
+  drawCtx.strokeStyle = 'rgba(33,150,243,0.85)';
+  drawCtx.lineWidth   = 22;
+  drawCtx.lineCap     = 'round';
+  drawCtx.lineJoin    = 'round';
+  drawCtx.stroke();
+
+  lastX = p.x; lastY = p.y;
+});
+
+drawCanvas.addEventListener('pointerup',     () => { isDrawing = false; });
+drawCanvas.addEventListener('pointerleave',  () => { isDrawing = false; });
+drawCanvas.addEventListener('pointercancel', () => { isDrawing = false; });
+
+/* ── CLEAR ── */
+function clearDrawing() {
+  if (answered) return;
+  stopHintAnim();
+  drawCtx.clearRect(0, 0, CW, CH);
+  /* Restore clean guide (remove any orange overlay) */
+  drawGuide(NUMBERS[curQ]);
+  hasDrawn = false;
+  document.getElementById('btn-check').disabled = true;
+}
+
+/* ── COVERAGE CHECK ── */
+function drawnPixelCount() {
+  const d = drawCtx.getImageData(0, 0, CW, CH).data;
+  let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 50) n++;
+  return n;
+}
+
+function checkCoverage() {
+  const offData  = offCtx.getImageData(0, 0, CW, CH).data;
+  const drawData = drawCtx.getImageData(0, 0, CW, CH).data;
+  /* SAMPLE: check every 2nd pixel */
+  const SAMPLE = 2;
+  /* RADIUS: brush half-width is 11px + 2px tolerance = 13.
+     Guide pixel counts as covered only if child's stroke passed within 13px of it. */
+  const RADIUS = 13;
+  let total = 0, covered = 0;
+
+  for (let y = 0; y < CH; y += SAMPLE) {
+    for (let x = 0; x < CW; x += SAMPLE) {
+      const idx = (y * CW + x) * 4;
+      if (offData[idx + 3] < 80) continue;
+      total++;
+
+      let found = false;
+      outer:
+      for (let dy = -RADIUS; dy <= RADIUS; dy += 3) {
+        for (let dx = -RADIUS; dx <= RADIUS; dx += 3) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= CW || ny >= CH) continue;
+          if (drawData[(ny * CW + nx) * 4 + 3] > 50) { found = true; break outer; }
+        }
+      }
+      if (found) covered++;
+    }
+  }
+  return total > 0 ? covered / total : 0;
+}
+
+/* ── ANSWER LOGIC ── */
+function checkAnswer() {
+  if (answered || !hasDrawn) return;
+
+  const tooSmall = drawnPixelCount() < 2800;
+  const cov      = tooSmall ? 0 : checkCoverage();
+  const THRESHOLD = 0.75; /* 75 % of guide pixels must be covered */
+
+  if (!tooSmall && cov >= THRESHOLD) registerCorrect();
+  else registerWrong(tooSmall);
+}
+
+function registerCorrect() {
+  answered = true;
+  stopHintAnim();
+  score++;
+  document.getElementById('score-val').textContent = score;
+  window.speechSynthesis?.cancel();
+  playClaps();
+  showToast('⭐ Great job!', '#4CAF50');
+  spawnConfetti();
+
+  /* Green success overlay */
+  drawCtx.save();
+  drawCtx.fillStyle = 'rgba(76,175,80,0.18)';
+  drawCtx.fillRect(0, 0, CW, CH);
+  drawCtx.restore();
+
+  setTimeout(() => { curQ++; loadQuestion(); }, 3200);
+}
+
+function registerWrong(tooSmall = false) {
+  if (answered) return;
+  attempts++;
+  play(sndWrong);
+
+  if (attempts === 1) {
+    const msg = tooSmall ? '✏️ Draw more! Trace the whole number.' : '❌ Try again! Follow the guide.';
+    showToast(msg, '#f44336');
+    setTimeout(hideToast, 1200);
+    setTimeout(() => showHintOverlay(NUMBERS[curQ]), 800);
+  } else {
+    answered = true;
+    showToast('💡 Correct answer!', '#FF9800');
+    setTimeout(() => {
+      showCorrectAnswer(NUMBERS[curQ]);
+      setTimeout(() => { curQ++; loadQuestion(); }, 3000);
+    }, 800);
+  }
+}
+
+/* ── GAME FLOW ── */
+let curQ = 0, score = 0, muted = false, attempts = 0, answered = false;
+
+function startGame() {
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  curQ = 0; score = 0;
+  loadQuestion();
+}
+
+function loadQuestion() {
+  if (curQ >= TOTAL) { showEnd(); return; }
+  stopHintAnim();
+  answered = false; attempts = 0; hasDrawn = false; isDrawing = false;
+
+  document.getElementById('btn-check').disabled = true;
+  document.getElementById('q-num').textContent      = curQ + 1;
+  document.getElementById('score-val').textContent  = score;
+  document.getElementById('prog-bar').style.width   = (curQ / TOTAL * 100) + '%';
+
+  const num = NUMBERS[curQ];
+  document.getElementById('instruction-txt').textContent = `✏️ Trace the number ${num}!`;
+
+  drawCtx.clearRect(0, 0, CW, CH);
+
+  document.fonts.ready.then(() => {
+    drawGuide(num);
+    buildOffscreen(num);
+  });
+
+  speak(`Trace the number ${num}!`);
+}
+
+/* ── TOAST ── */
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color; t.classList.add('show');
+  setTimeout(hideToast, 1800);
+}
+function hideToast() { document.getElementById('toast').classList.remove('show'); }
+
+/* ── CONFETTI ── */
+function spawnConfetti() {
+  const c = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#cc5de8'];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.cssText = `left:${Math.random()*100}vw;background:${c[~~(Math.random()*c.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*.8}s;`;
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+}
+
+/* ── MUTE ── */
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (muted) { window.speechSynthesis?.cancel(); sndClaps.pause(); }
+  else speak(`Trace the number ${NUMBERS[curQ]}!`);
+}
+
+/* ── END ── */
+function showEnd() {
+  document.getElementById('prog-bar').style.width = '100%';
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'flex';
+  document.getElementById('final-score').textContent   = score;
+  document.getElementById('end-stars').textContent =
+    score >= 9 ? '⭐⭐⭐' : score >= 7 ? '⭐⭐' : '⭐';
+  window.speechSynthesis?.cancel();
+  playClaps(); spawnConfetti(); setTimeout(spawnConfetti, 800);
+}
+
+function restartGame() {
+  stopHintAnim();
+  window.speechSynthesis?.cancel();
+  document.getElementById('end-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  curQ = 0; score = 0; answered = false; attempts = 0;
+  loadQuestion();
+}
+</script>
+</body>
+</html>
