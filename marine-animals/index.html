@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Marine Animals · LY3 · Game 27</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', Arial, sans-serif;
+      height: 100vh; height: 100dvh;
+      display: flex; align-items: stretch; justify-content: center;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+    }
+
+    /* ── INTRO ── */
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc);
+      display: flex; align-items: center; justify-content: center;
+      border: 5px solid #FFD700; z-index: 200; cursor: pointer;
+    }
+    #intro-logo { width: 220px; height: auto; filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5)); animation: logoBounce 2s ease-in-out infinite; -webkit-user-drag: none; opacity: 0; transition: opacity 0.3s; }
+    #intro-logo.loaded { opacity: 1; }
+    @keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+
+    /* ── GAME SCREEN ── */
+    #game-screen {
+      display: none; flex-direction: column;
+      width: 100%; height: 100%;
+      background: linear-gradient(180deg,
+        #001a33 0%, #003366 18%, #005599 42%,
+        #0077bb 62%, #0099cc 80%, #00bbdd 100%
+      );
+      padding: 12px 14px 72px;
+      overflow: hidden; position: relative;
+    }
+
+    /* ── LIGHT SHAFTS ── */
+    .light-shaft {
+      position: absolute; top: 0; pointer-events: none; z-index: 0;
+      width: 90px; height: 62%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, transparent 100%);
+      transform-origin: top center;
+      transform: skewX(-8deg);
+      animation: shaftPulse ease-in-out infinite;
+    }
+    @keyframes shaftPulse {
+      0%,100% { opacity:0.35; }
+      50%      { opacity:1; }
+    }
+
+    /* ── BACKGROUND BUBBLES ── */
+    .bg-bubble {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.20);
+      pointer-events: none; z-index: 0;
+      animation: bgRise linear infinite;
+    }
+    @keyframes bgRise {
+      0%   { transform: translateY(0) scale(0.5); opacity: 0.7; }
+      100% { transform: translateY(-110vh) scale(1); opacity: 0; }
+    }
+
+    /* ── BACKGROUND FISH ── */
+    .bg-fish {
+      position: absolute; pointer-events: none; z-index: 0;
+      opacity: 0.22; animation: swimAcross linear infinite;
+    }
+    @keyframes swimAcross {
+      0%   { transform: translateX(-12vw); }
+      100% { transform: translateX(112vw); }
+    }
+
+    /* ── HEADER ── */
+    .hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(0,0,0,0.28); backdrop-filter: blur(8px);
+      border-radius: 18px; padding: 10px 18px; margin-bottom: 10px;
+      border: 1px solid rgba(255,255,255,0.18); flex-shrink: 0;
+      position: relative; z-index: 10;
+    }
+    .hdr-score { font-size: 1.1em; font-weight: bold; color: #FFD700; min-width: 80px; }
+    .hdr-title { font-size: clamp(0.72em,2.4vw,0.95em); color: white; font-weight: bold; text-align: center; }
+    .mute-btn  { width: 38px; height: 38px; border: 2px solid rgba(255,255,255,0.35); border-radius: 50%; background: rgba(255,255,255,0.12); font-size: 1.1em; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+
+    .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-shrink: 0; position: relative; z-index: 10; }
+    .progress-label { font-size: 0.85em; color: rgba(255,255,255,0.75); white-space: nowrap; }
+    .progress-bar-wrap { flex: 1; height: 10px; background: rgba(255,255,255,0.18); border-radius: 5px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg,#FFD700,#FFA500); transition: width 0.5s ease; }
+
+    /* ── INSTRUCTION ── */
+    .instruction {
+      text-align: center;
+      font-size: clamp(1.1em, 4vw, 1.5em);
+      color: white; font-weight: 800;
+      margin-bottom: 14px; flex-shrink: 0;
+      position: relative; z-index: 10;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── BUBBLES GRID ── */
+    .bubbles-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(10px, 2.5vh, 48px);
+      width: 100%;
+      max-width: min(680px, 90vw);
+      margin: 0 auto;
+      flex: 1;
+      align-content: center;
+      position: relative; z-index: 10;
+    }
+
+    .bubble-slot {
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── THE BUBBLE — container only, no visual styling ── */
+    .bubble {
+      width: clamp(90px, 17vh, 190px);
+      height: clamp(90px, 17vh, 190px);
+      position: relative;
+      cursor: pointer; touch-action: manipulation;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── BUBBLE SHELL — the glassy circle (separate from emoji) ── */
+    .bubble-shell {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle at 32% 26%,
+        rgba(255,255,255,0.88) 0%,
+        rgba(200,235,255,0.55) 30%,
+        rgba(120,200,255,0.28) 65%,
+        rgba(60,160,240,0.15) 100%
+      );
+      border: 3px solid rgba(255,255,255,0.72);
+      box-shadow:
+        inset 0 8px 18px rgba(255,255,255,0.55),
+        inset 0 -8px 18px rgba(80,160,240,0.22),
+        0 10px 32px rgba(0,40,120,0.45);
+      pointer-events: none;
+    }
+    /* Shine dot on shell */
+    .bubble-shell::after {
+      content: '';
+      position: absolute;
+      width: 30%; height: 20%;
+      top: 16%; left: 20%;
+      background: rgba(255,255,255,0.65);
+      border-radius: 50%;
+      filter: blur(3px);
+    }
+
+    .bubble-emoji {
+      width: 62%; height: 62%;
+      object-fit: contain;
+      pointer-events: none;
+      position: relative; z-index: 2;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+      -webkit-user-drag: none;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .bubble-emoji.loaded { opacity: 1; }
+
+    /* ── BOB ANIMATION (applied to .bubble container via JS) ── */
+    @keyframes bob {
+      0%,100% { transform: translateY(0px)   rotate(-1.5deg); }
+      50%      { transform: translateY(-18px) rotate( 1.5deg); }
+    }
+
+    /* ── HINT — gold pulse on shell ── */
+    .bubble.hint .bubble-shell {
+      border-color: #FFD700;
+      animation: shellHint 1.1s ease-in-out infinite;
+    }
+    .bubble.hint { animation: bobHint 1.1s ease-in-out infinite !important; }
+    @keyframes shellHint {
+      0%,100% { box-shadow: inset 0 8px 18px rgba(255,255,255,0.55), 0 0 0 0   rgba(255,215,0,0.85); }
+      50%      { box-shadow: inset 0 8px 18px rgba(255,255,255,0.55), 0 0 0 18px rgba(255,215,0,0); }
+    }
+    @keyframes bobHint {
+      0%,100% { transform: translateY(0px)    scale(1); }
+      50%      { transform: translateY(-14px)  scale(1.04); }
+    }
+
+    /* ── WRONG — red shake + tint shell ── */
+    .bubble.wrong { animation: bubbleWrong 0.45s ease !important; }
+    .bubble.wrong .bubble-shell {
+      background: radial-gradient(circle at 32% 26%, rgba(255,210,210,0.88) 0%, rgba(255,150,150,0.5) 60%, rgba(220,80,80,0.2) 100%);
+    }
+    @keyframes bubbleWrong {
+      0%,100%{ transform:translateX(0) rotate(0deg); }
+      20%    { transform:translateX(-12px) rotate(-5deg); }
+      40%    { transform:translateX(12px)  rotate( 5deg); }
+      60%    { transform:translateX(-7px)  rotate(-3deg); }
+      80%    { transform:translateX(7px)   rotate( 3deg); }
+    }
+
+    /* ── CORRECT — green flash on shell, then burst; emoji bounces and stays BIG ── */
+    .bubble.correct { pointer-events: none; animation: none !important; }
+    .bubble.correct .bubble-shell {
+      border-color: #4CAF50 !important;
+      box-shadow: inset 0 8px 18px rgba(100,255,100,0.45), 0 0 0 8px rgba(76,175,80,0.65) !important;
+      animation: shellBurst 0.5s cubic-bezier(0.36,0.07,0.19,0.97) forwards !important;
+    }
+    .bubble.correct .bubble-emoji {
+      animation: animalReveal 0.65s cubic-bezier(0.17,0.89,0.32,1.28) forwards !important;
+    }
+    @keyframes shellBurst {
+      0%  { transform:scale(1);    opacity:1; }
+      25% { transform:scale(1.25); opacity:1; }
+      50% { transform:scale(1.55); opacity:0.6; }
+      100%{ transform:scale(2.1);  opacity:0; }
+    }
+    @keyframes animalReveal {
+      0%  { transform:scale(1)    translateY(0px);  }
+      45% { transform:scale(1.9)  translateY(-22px);}
+      70% { transform:scale(1.65) translateY(-15px);}
+      100%{ transform:scale(1.72) translateY(-13px);}
+    }
+
+    /* ── POP PARTICLES ── */
+    .pop-particle {
+      position: fixed; border-radius: 50%;
+      pointer-events: none; z-index: 500;
+      animation: particleFly linear forwards;
+    }
+    @keyframes particleFly {
+      0%  { opacity:1; transform:translate(0,0) scale(1); }
+      100%{ opacity:0; transform:translate(var(--tx),var(--ty)) scale(0.1); }
+    }
+
+    /* ── RESTART ── */
+    .btn-restart { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#FF9800,#F57C00); color:white; border:none; border-radius:50px; padding:12px 30px; font-size:1em; font-family:inherit; font-weight:800; cursor:pointer; box-shadow:0 4px 16px rgba(255,152,0,0.4); z-index:50; white-space:nowrap; touch-action:manipulation; min-height:44px; }
+
+    /* ── TOAST ── */
+    #toast { position:fixed; top:20%; left:50%; transform:translateX(-50%) scale(0); color:white; padding:14px 28px; border-radius:50px; font-size:1.4em; font-weight:800; box-shadow:0 6px 24px rgba(0,0,0,0.28); z-index:600; transition:transform 0.2s,opacity 0.2s; opacity:0; pointer-events:none; white-space:nowrap; }
+    #toast.show { transform:translateX(-50%) scale(1); opacity:1; }
+
+    /* ── CONFETTI ── */
+    .confetti-piece { position:fixed; top:-10px; pointer-events:none; z-index:999; animation:confettiFall linear forwards; }
+    @keyframes confettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+
+    /* ── END SCREEN ── */
+    #end-screen { display:none; position:fixed; inset:0; background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc); flex-direction:column; align-items:center; justify-content:center; gap:18px; z-index:150; padding:30px; }
+    .end-trophy { font-size:4.5em; animation:trophySpin 1.5s ease-out; }
+    @keyframes trophySpin { from{transform:rotate(-20deg) scale(0)} 60%{transform:rotate(10deg) scale(1.1)} to{transform:rotate(0deg) scale(1)} }
+    .end-title { color:#FFD700; font-size:clamp(1.5em,5vw,2.2em); font-weight:bold; text-shadow:0 3px 10px rgba(0,0,0,0.3); text-align:center; }
+    .end-sub   { color:rgba(255,255,255,0.9); font-size:1.1em; text-align:center; }
+    .end-score-box { background:rgba(255,255,255,0.14); border-radius:16px; padding:12px 28px; color:white; font-size:1.4em; font-weight:bold; border:1px solid rgba(255,255,255,0.25); }
+    .end-stars { font-size:2.2em; letter-spacing:4px; }
+    .btn-play-again { background:#FFD700; color:#333; border:none; border-radius:50px; padding:14px 36px; font-size:1.1em; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 16px rgba(255,215,0,0.5); touch-action:manipulation; min-height:44px; }
+
+    @media(max-width:768px){ .hdr-title{ display:none; } }
+    @media(max-width:480px){
+      #game-screen{ padding:8px 8px 64px; }
+      .instruction{ font-size:clamp(0.9em,3.5vw,1.1em); margin-bottom:8px; }
+    }
+    @media(max-height:700px){
+      .bubble{ width:clamp(80px,16vh,150px); height:clamp(80px,16vh,150px); }
+      .bubbles-grid{ gap:clamp(8px,2vh,18px); }
+      .instruction{ font-size:clamp(0.9em,3vw,1.1em); margin-bottom:6px; }
+    }
+    @media(max-height:560px){
+      .bubble{ width:clamp(68px,14vh,110px); height:clamp(68px,14vh,110px); }
+      .bubbles-grid{ gap:8px; }
+      .instruction{ margin-bottom:4px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="startGame()">
+  <img id="intro-logo" src="Assets/innovinelogo.png" alt="Innovine" onerror="this.style.display='none'" onload="this.classList.add('loaded')">
+</div>
+<div id="toast"></div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-score">⭐ <span id="score-val">0</span> / 10</div>
+    <div class="hdr-title">Marine Animals · LY3</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+  <div class="progress-row">
+    <span class="progress-label">Q <span id="q-num">1</span> / 10</span>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="instruction" id="instruction-txt">Find the animal!</div>
+  <div class="bubbles-grid" id="bubbles-grid"></div>
+  <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+</div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">Amazing Ocean Explorer!</div>
+  <div class="end-sub">You found all the marine animals! 🌊</div>
+  <div class="end-score-box">Score: &nbsp;<span id="final-score">0</span> / 10</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">▶ &nbsp;Play Again</button>
+</div>
+
+<script>
+/* ── ANIMALS (10 total — each becomes target exactly once per game) ── */
+const ALL_ANIMALS = [
+  { name: 'Dolphin',   img: 'Assets/dolphin.png' },
+  { name: 'Fish',      img: 'Assets/fish1.png' },
+  { name: 'Crab',      img: 'Assets/crab.png' },
+  { name: 'Octopus',   img: 'Assets/octopus.png' },
+  { name: 'Shark',     img: 'Assets/shark.png' },
+  { name: 'Turtle',    img: 'Assets/turtle.png' },
+  { name: 'Whale',     img: 'Assets/whale.png' },
+  { name: 'Clownfish', img: 'Assets/clownfish.png' },
+  { name: 'Squid',     img: 'Assets/squid.png' },
+  { name: 'Blowfish',  img: 'Assets/blowfish.png' },
+];
+
+/* Preload all animal images */
+ALL_ANIMALS.forEach(a => { new Image().src = a.img; });
+
+/* Bob timing variety */
+const BOB_DURATIONS = ['2.9s','3.3s','2.6s','3.6s'];
+const BOB_DELAYS    = ['0s','0.75s','1.5s','0.35s'];
+
+/* ── BUILD QUESTIONS ── */
+function buildQuestions() {
+  /* Shuffle so target order is random each game */
+  const targets = [...ALL_ANIMALS].sort(() => Math.random() - 0.5);
+  return targets.map(target => {
+    const others = ALL_ANIMALS.filter(a => a.name !== target.name)
+                              .sort(() => Math.random() - 0.5)
+                              .slice(0, 3);
+    const animals = [target, ...others].sort(() => Math.random() - 0.5);
+    return { animals, target: target.name };
+  });
+}
+
+/* ── AUDIO ── */
+const sndWrong = new Audio('Assets/wrong.mp3');
+const sndClaps = new Audio('Assets/free_claps.mp3');
+
+function unlockAudio() {
+  [sndWrong, sndClaps].forEach(s => { s.play().catch(()=>{}); s.pause(); s.currentTime = 0; });
+  document.removeEventListener('pointerdown', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio);
+
+function play(s) { if (muted) return; s.currentTime = 0; s.play().catch(() => {}); }
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0; sndClaps.play().catch(() => {});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+
+/* ── TTS ── */
+function getVoice() {
+  const v = window.speechSynthesis.getVoices();
+  return v.find(x => x.lang.startsWith('en') && !x.name.includes('Google'))
+      || v.find(x => x.lang.startsWith('en')) || v[0];
+}
+function speak(text) {
+  if (!('speechSynthesis' in window) || muted) return;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    if (muted) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.7; u.pitch = 1.1; u.volume = 1;
+    const v = getVoice(); if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }, 150);
+}
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+
+/* ── OCEAN DECORATIONS ── */
+function spawnOceanBg() {
+  const gs = document.getElementById('game-screen');
+  gs.querySelectorAll('.ocean-deco').forEach(e => e.remove());
+
+  function add(cls, css) {
+    const el = document.createElement('div');
+    el.className = 'ocean-deco ' + cls;
+    el.style.cssText = css;
+    gs.appendChild(el);
+    return el;
+  }
+
+  /* Light shafts from surface */
+  [8,22,37,54,70,86].forEach((left, i) =>
+    add('light-shaft', `left:${left}%;animation-duration:${3.2+i*0.55}s;animation-delay:${i*0.6}s;`));
+
+  /* Rising background bubbles */
+  for (let i = 0; i < 18; i++) {
+    const sz = 4 + Math.random() * 20;
+    add('bg-bubble', `width:${sz}px;height:${sz}px;left:${Math.random()*96}%;bottom:${Math.random()*30}%;animation-duration:${8+Math.random()*14}s;animation-delay:${Math.random()*12}s;`);
+  }
+}
+
+/* ── BUILD BUBBLES ── */
+function buildBubbles(q) {
+  const grid = document.getElementById('bubbles-grid');
+  grid.innerHTML = '';
+
+  q.animals.forEach((animal, idx) => {
+    const slot = document.createElement('div');
+    slot.className = 'bubble-slot';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.dataset.name = animal.name;
+    bubble.style.animation = `bob ${BOB_DURATIONS[idx]} ease-in-out infinite ${BOB_DELAYS[idx]}`;
+
+    const shell = document.createElement('div');
+    shell.className = 'bubble-shell';
+    const img = document.createElement('img');
+    img.className = 'bubble-emoji';
+    img.src = animal.img;
+    img.alt = animal.name;
+    img.onload = () => img.classList.add('loaded');
+    if (img.complete) img.classList.add('loaded');
+    bubble.appendChild(shell);
+    bubble.appendChild(img);
+    bubble.addEventListener('pointerdown', () => selectBubble(animal.name, bubble));
+
+    slot.appendChild(bubble);
+    grid.appendChild(slot);
+  });
+}
+
+function getBubble(name) {
+  return document.querySelector(`.bubble[data-name="${name}"]`);
+}
+
+/* ── ANSWER LOGIC ── */
+function selectBubble(name, bubbleEl) {
+  if (answered) return;
+  if (name === QUESTIONS[curQ].target) registerCorrect(bubbleEl);
+  else registerWrong(bubbleEl);
+}
+
+function registerCorrect(bubbleEl) {
+  answered = true;
+  score++;
+  document.getElementById('score-val').textContent = score;
+  window.speechSynthesis?.cancel();
+
+  /* Strip hint from any bubble so correct animation isn't blocked by !important hint styles */
+  document.querySelectorAll('.bubble').forEach(b => b.classList.remove('hint'));
+  bubbleEl.classList.add('correct');
+  spawnPopParticles(bubbleEl);
+
+  setTimeout(() => {
+    playClaps();
+    showToast('⭐ Correct!', '#4CAF50');
+    spawnConfetti();
+  }, 180);
+
+  setTimeout(() => { curQ++; loadQuestion(); }, 3200);
+}
+
+function registerWrong(bubbleEl) {
+  if (answered) return;
+  attempts++;
+  play(sndWrong);
+
+  /* Shake wrong bubble */
+  bubbleEl.classList.remove('wrong');
+  void bubbleEl.offsetWidth;
+  bubbleEl.classList.add('wrong');
+  setTimeout(() => bubbleEl.classList.remove('wrong'), 480);
+
+  if (attempts === 1) {
+    showToast('❌ Try again!', '#f44336');
+    setTimeout(hideToast, 900);
+    /* Hint — glow correct bubble after 800ms */
+    setTimeout(() => {
+      const cb = getBubble(QUESTIONS[curQ].target);
+      if (cb) cb.classList.add('hint');
+    }, 800);
+  } else {
+    answered = true;
+    showToast('❌ Wrong!', '#f44336');
+    setTimeout(() => {
+      const cb = getBubble(QUESTIONS[curQ].target);
+      if (cb) { cb.classList.remove('hint'); cb.classList.add('correct'); spawnPopParticles(cb); }
+      showToast('💡 Correct answer!', '#FF9800');
+      setTimeout(() => { curQ++; loadQuestion(); }, 3000);
+    }, 1000);
+  }
+}
+
+/* ── POP PARTICLES ── */
+function spawnPopParticles(bubbleEl) {
+  const rect = bubbleEl.getBoundingClientRect();
+  const cx = rect.left + rect.width  / 2;
+  const cy = rect.top  + rect.height / 2;
+  const cols = ['#ffffff','#87ceeb','#00d4ff','#FFD700','#ff6b6b','#6BCB77','#a29bfe'];
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'pop-particle';
+    const angle = (i / 20) * Math.PI * 2;
+    const dist  = 55 + Math.random() * 70;
+    const sz    = 5 + Math.random() * 9;
+    p.style.cssText = `width:${sz}px;height:${sz}px;left:${cx}px;top:${cy}px;background:${cols[~~(Math.random()*cols.length)]};--tx:${(Math.cos(angle)*dist).toFixed(1)}px;--ty:${(Math.sin(angle)*dist).toFixed(1)}px;animation-duration:${0.5+Math.random()*0.3}s;`;
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+}
+
+/* ── GAME FLOW ── */
+let QUESTIONS = [];
+let curQ = 0, score = 0, muted = false, attempts = 0, answered = false;
+let toastTimer = null;
+
+function startGame() {
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  QUESTIONS = buildQuestions();
+  curQ = 0; score = 0;
+  spawnOceanBg();
+  loadQuestion();
+}
+
+function loadQuestion() {
+  if (curQ >= 10) { showEnd(); return; }
+  sndClaps.pause(); sndClaps.currentTime = 0;
+  answered = false; attempts = 0;
+
+  const q = QUESTIONS[curQ];
+  document.getElementById('q-num').textContent      = curQ + 1;
+  document.getElementById('score-val').textContent  = score;
+  document.getElementById('prog-bar').style.width   = (curQ / 10 * 100) + '%';
+  document.getElementById('instruction-txt').textContent = `Find the ${q.target}!`;
+
+  buildBubbles(q);
+  speak(`Find the ${q.target}!`);
+}
+
+/* ── UI HELPERS ── */
+function showToast(msg, color) {
+  clearTimeout(toastTimer);
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color; t.classList.add('show');
+  toastTimer = setTimeout(hideToast, 1800);
+}
+function hideToast() { document.getElementById('toast').classList.remove('show'); }
+
+function spawnConfetti() {
+  const c = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#cc5de8','#00d4ff'];
+  for (let i = 0; i < 65; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.cssText = `left:${Math.random()*100}vw;background:${c[~~(Math.random()*c.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*.8}s;`;
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+}
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (muted) { window.speechSynthesis?.cancel(); sndClaps.pause(); }
+  else if (curQ < 10) speak(`Find the ${QUESTIONS[curQ].target}!`);
+}
+
+function showEnd() {
+  document.getElementById('prog-bar').style.width = '100%';
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'flex';
+  document.getElementById('final-score').textContent   = score;
+  document.getElementById('end-stars').textContent =
+    score >= 9 ? '⭐⭐⭐' : score >= 7 ? '⭐⭐' : '⭐';
+  window.speechSynthesis?.cancel();
+  playClaps(); spawnConfetti(); setTimeout(spawnConfetti, 800);
+}
+
+function restartGame() {
+  window.speechSynthesis?.cancel();
+  document.getElementById('end-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  QUESTIONS = buildQuestions();
+  curQ = 0; score = 0; answered = false; attempts = 0;
+  loadQuestion();
+}
+</script>
+</body>
+</html>
