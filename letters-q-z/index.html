@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Letters Q–Z · LY3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', 'Trebuchet MS', Arial, sans-serif;
+      background: linear-gradient(135deg, #fce4ec 0%, #e8f5e9 50%, #e3f2fd 100%);
+      height: 100vh; height: 100dvh;
+      display: flex; align-items: stretch; justify-content: center;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+    }
+
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc);
+      display: flex; align-items: center; justify-content: center;
+      border: 5px solid #FFD700; z-index: 200; cursor: pointer;
+    }
+    #intro-logo { width: 220px; height: auto; filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5)); animation: logoBounce 2s ease-in-out infinite; }
+    @keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+    #game-screen {
+      display: none; flex-direction: column;
+      width: 100%; max-width: 860px; height: 100%; padding: 14px 14px 75px;
+      overflow-y: auto;
+    }
+
+    .hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      background: white; border-radius: 18px; padding: 10px 18px;
+      margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.1); flex-shrink: 0;
+    }
+    .hdr-score { font-size: 1.2em; font-weight: bold; color: #4CAF50; min-width: 70px; }
+    .hdr-title { font-size: clamp(0.75em,2.5vw,1em); color: #6a0dad; font-weight: bold; text-align: center; }
+    .mute-btn { width: 38px; height: 38px; border: 2px solid #ddd; border-radius: 50%; background: white; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
+    .progress-label { font-size: 0.9em; color: #777; white-space: nowrap; }
+    .progress-bar-wrap { flex: 1; height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #4CAF50, #8BC34A); transition: width 0.5s ease; }
+
+    .instruction { text-align: center; font-size: clamp(1em, 3.5vw, 1.25em); color: #333; font-weight: 800; margin-bottom: 10px; padding: 0 8px; line-height: 1.4; flex-shrink: 0; }
+
+    .q-card {
+      background: white; border-radius: 24px; padding: 22px 18px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      margin-top: auto; margin-bottom: auto; flex-shrink: 0; width: 100%;
+    }
+
+    .img-wrap {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      min-height: 160px;
+    }
+    .img-wrap img {
+      max-height: 200px; max-width: 85%; object-fit: contain;
+      border-radius: 16px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.12));
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .img-wrap img.loaded { opacity: 1; }
+
+    .choices-grid { display: flex; justify-content: center; gap: 18px; width: 100%; }
+
+    .letter-btn {
+      width: 85px; height: 85px;
+      border: 4px solid transparent; border-radius: 50%;
+      font-size: 2.6em; font-weight: 800; font-family: inherit;
+      cursor: pointer; color: white;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
+      will-change: transform;
+      text-transform: lowercase;
+    }
+    .letter-btn:active { transform: scale(0.92); }
+
+    /* Button colours */
+    .letter-btn[data-letter="q"] { background: linear-gradient(135deg, #FF6B6B, #ee5a24); }
+    .letter-btn[data-letter="r"] { background: linear-gradient(135deg, #FF9F43, #e67e22); }
+    .letter-btn[data-letter="s"] { background: linear-gradient(135deg, #1dd1a1, #10ac84); }
+    .letter-btn[data-letter="t"] { background: linear-gradient(135deg, #54a0ff, #2e86de); }
+    .letter-btn[data-letter="u"] { background: linear-gradient(135deg, #a29bfe, #6c5ce7); }
+    .letter-btn[data-letter="v"] { background: linear-gradient(135deg, #fd79a8, #e84393); }
+    .letter-btn[data-letter="w"] { background: linear-gradient(135deg, #00b894, #00826b); }
+    .letter-btn[data-letter="x"] { background: linear-gradient(135deg, #e17055, #c0392b); }
+    .letter-btn[data-letter="y"] { background: linear-gradient(135deg, #fdcb6e, #e0a800); }
+    .letter-btn[data-letter="z"] { background: linear-gradient(135deg, #6c5ce7, #4a148c); }
+
+    .letter-btn.wrong   { border-color: #f44336; border-width: 5px; animation: shakeWrong 0.4s ease; }
+    .letter-btn.hint    { border-color: #FFD700; border-width: 5px; animation: pulseHint 1s ease-in-out infinite; }
+    .letter-btn.correct { border-color: #4CAF50; border-width: 5px; box-shadow: 0 0 0 6px #4CAF5040; animation: popCorrect 0.35s ease; }
+
+    @keyframes popCorrect { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+    @keyframes shakeWrong { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+    @keyframes pulseHint  { 0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0.6)} 50%{box-shadow:0 0 0 14px rgba(255,215,0,0)} }
+
+    .bottom-row { display: flex; justify-content: center; position: fixed; bottom: 16px; left: 0; right: 0; z-index: 50; pointer-events: none; }
+    .btn-restart { pointer-events: all; background: linear-gradient(135deg, #FF9800, #F57C00); color: white; border: none; padding: 12px 32px; border-radius: 40px; font-size: 1em; font-family: inherit; font-weight: bold; cursor: pointer; box-shadow: 0 5px 14px rgba(255,152,0,0.4); }
+
+    #toast { position: fixed; top: 18%; left: 50%; transform: translateX(-50%) scale(0.7); padding: 14px 30px; border-radius: 50px; font-size: 1.5em; font-weight: bold; color: white; pointer-events: none; opacity: 0; transition: opacity 0.2s, transform 0.2s; z-index: 500; white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,0.2); will-change: transform, opacity; }
+    #toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+    .confetti { position: fixed; pointer-events: none; z-index: 9998; border-radius: 2px; }
+
+    #end-screen { display: none; position: fixed; inset: 0; background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc); flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 200; text-align: center; padding: 30px; }
+    .end-trophy { font-size: 4.5em; animation: trophySpin 1.5s ease-out; }
+    @keyframes trophySpin { from{transform:rotate(-20deg) scale(0)} 60%{transform:rotate(10deg) scale(1.1)} to{transform:rotate(0) scale(1)} }
+    .end-title  { color: #FFD700; font-size: clamp(1.5em, 5vw, 2.2em); font-weight: bold; text-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+    .end-sub    { color: rgba(255,255,255,0.9); font-size: 1.1em; }
+    .end-score-box { background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.35); border-radius: 20px; padding: 16px 40px; color: white; font-size: 1.8em; font-weight: bold; }
+    .end-stars  { font-size: 2.2em; letter-spacing: 4px; }
+    .btn-play-again { background: #FFD700; color: #333; border: none; padding: 15px 45px; border-radius: 40px; font-size: 1.2em; font-family: inherit; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.2); margin-top: 8px; }
+
+    @media (max-width: 768px) {
+      #game-screen { padding: 10px 10px 75px; }
+      .hdr-title { display: none; }
+      .letter-btn { width: 75px; height: 75px; font-size: 2.2em; }
+      .img-wrap img { max-height: 170px; }
+    }
+    @media (max-width: 480px) {
+      .letter-btn { width: 68px; height: 68px; font-size: 2em; border-width: 3px; }
+      .choices-grid { gap: 12px; }
+      .q-card { padding: 16px 12px; gap: 16px; }
+      .img-wrap { min-height: 130px; }
+      .img-wrap img { max-height: 140px; }
+      .instruction { font-size: 0.95em; margin-bottom: 8px; }
+      .hdr-score { font-size: 1em; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="startGame()">
+  <img id="intro-logo" src="Assets/innovinelogo.png" alt="Innovine" onerror="this.style.display='none'">
+</div>
+
+<div id="toast"></div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-score">⭐ <span id="score-val">0</span> / 10</div>
+    <div class="hdr-title">Letters Q–Z · LY3</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+  <div class="progress-row">
+    <span class="progress-label">Q <span id="q-num">1</span> / 10</span>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="instruction" id="instruction-txt"></div>
+  <div class="q-card">
+    <div class="img-wrap">
+      <img id="q-img" src="" alt="">
+    </div>
+    <div class="choices-grid" id="choices-grid"></div>
+  </div>
+  <div class="bottom-row">
+    <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+  </div>
+</div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">You completed all 10 questions!</div>
+  <div class="end-score-box">Score: &nbsp;<span id="final-score">0</span> / 10</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">&#9654; &nbsp;Play Again</button>
+</div>
+
+<script>
+const QUESTIONS = [
+  { letter: 'q', word: 'queen',      img: 'Assets/queen.png',                          choices: ['q', 'r', 's'] },
+  { letter: 'r', word: 'rainbow',    img: 'Assets/new%20assets/rainbow.jpg',            choices: ['r', 's', 't'] },
+  { letter: 's', word: 'starfish',   img: 'Assets/new%20assets/starfish.jpg',           choices: ['s', 't', 'u'] },
+  { letter: 't', word: 'tent',       img: 'Assets/new%20assets/tent.jpg',               choices: ['t', 'u', 'v'] },
+  { letter: 'u', word: 'unicycle',   img: 'Assets/unicycle-icon-cartoon-style-vector.jpg', choices: ['u', 'v', 'w'] },
+  { letter: 'v', word: 'van',        img: 'Assets/van.png',                             choices: ['v', 'w', 'x'] },
+  { letter: 'w', word: 'watermelon', img: 'Assets/new%20assets/4 watermelons.png',      choices: ['w', 'x', 'y'] },
+  { letter: 'x', word: 'xylophone', img: 'Assets/xylophone.png',                       choices: ['x', 'y', 'z'] },
+  { letter: 'y', word: 'yacht',      img: 'Assets/yacht.png',                           choices: ['y', 'z', 'q'] },
+  { letter: 'z', word: 'zebra',      img: 'Assets/zebra.png',                           choices: ['z', 'q', 'r'] },
+];
+
+// Preload all question images
+QUESTIONS.forEach(q => { new Image().src = q.img; });
+
+let curQ = 0, score = 0, attempts = 0, answered = false, muted = false;
+
+const sndWrong = new Audio('Assets/wrong.mp3');
+const sndClaps = new Audio('Assets/free_claps.mp3');
+
+function unlockAudio() {
+  [sndWrong, sndClaps].forEach(s => { s.play().catch(()=>{}); s.pause(); s.currentTime = 0; });
+  document.removeEventListener('pointerdown', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio);
+
+function play(s) { if (muted) return; window.speechSynthesis?.cancel(); s.currentTime = 0; s.play().catch(()=>{}); }
+
+function speak(text) {
+  sndClaps.pause(); sndClaps.currentTime = 0;
+  if (!('speechSynthesis' in window) || muted) return;
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    if (muted) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.65; u.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const v = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google'))
+           || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  }, 150);
+}
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0; sndClaps.play().catch(()=>{});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+
+function getBtn(letter) {
+  return document.querySelector(`.letter-btn[data-letter="${letter}"]`);
+}
+
+function clearBtnStates() {
+  document.querySelectorAll('.letter-btn').forEach(b => b.className = 'letter-btn');
+}
+
+function loadQuestion() {
+  if (curQ >= QUESTIONS.length) { showEnd(); return; }
+  answered = false; attempts = 0;
+
+  const q = QUESTIONS[curQ];
+  document.getElementById('q-num').textContent     = curQ + 1;
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('prog-bar').style.width  = (curQ / QUESTIONS.length * 100) + '%';
+
+  const questionText = `Which letter does "${q.word}" start with?`;
+  document.getElementById('instruction-txt').textContent = questionText.toUpperCase();
+  speak(questionText);
+
+  const img = document.getElementById('q-img');
+  img.classList.remove('loaded');
+  img.src = q.img;
+  if (img.complete) { img.classList.add('loaded'); }
+  else { img.onload = () => img.classList.add('loaded'); }
+
+  const wrap = document.getElementById('choices-grid');
+  wrap.innerHTML = '';
+  const shuffled = [...q.choices];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  shuffled.forEach(lettr => {
+    const btn = document.createElement('button');
+    btn.className = 'letter-btn';
+    btn.dataset.letter = lettr;
+    btn.textContent = lettr;
+    btn.addEventListener('touchend', e => { e.preventDefault(); selectLetter(lettr); }, { passive: false });
+    btn.onclick = () => selectLetter(lettr);
+    wrap.appendChild(btn);
+  });
+}
+
+function selectLetter(letter) {
+  if (answered) return;
+  clearBtnStates();
+  const selectedLetter = letter.toLowerCase();
+  const correctLetter  = QUESTIONS[curQ].letter.toLowerCase();
+  if (selectedLetter === correctLetter) registerCorrect(selectedLetter);
+  else registerWrong(selectedLetter);
+}
+
+function registerCorrect(letter) {
+  answered = true;
+  clearBtnStates();
+  getBtn(letter).classList.add('correct');
+  score++;
+  document.getElementById('score-val').textContent = score;
+  window.speechSynthesis?.cancel();
+  playClaps();
+  showToast('⭐ Correct!', '#4CAF50');
+  spawnConfetti();
+  setTimeout(() => { curQ++; loadQuestion(); }, 3200);
+}
+
+function registerWrong(letter) {
+  if (answered) return;
+  attempts++;
+  const wrongBtn   = getBtn(letter);
+  const correctBtn = getBtn(QUESTIONS[curQ].letter);
+
+  if (attempts === 1) {
+    wrongBtn.classList.add('wrong');
+    play(sndWrong);
+    showToast('❌ Try again!', '#f44336');
+    setTimeout(() => {
+      wrongBtn.classList.remove('wrong');
+      if (!answered) correctBtn.classList.add('hint');
+    }, 900);
+  } else {
+    answered = true;
+    wrongBtn.classList.add('wrong');
+    play(sndWrong);
+    showToast('❌ Wrong!', '#f44336');
+    setTimeout(() => {
+      clearBtnStates();
+      correctBtn.classList.add('correct');
+      showToast('💡 Correct answer!', '#FF9800');
+      setTimeout(() => { curQ++; loadQuestion(); }, 3000);
+    }, 1000);
+  }
+}
+
+function startGame() {
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  curQ = 0; score = 0;
+  loadQuestion();
+}
+
+function restartGame() {
+  window.speechSynthesis?.cancel();
+  document.getElementById('end-screen').style.display  = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  curQ = 0; score = 0; attempts = 0; answered = false;
+  loadQuestion();
+}
+
+let toastTimer = null;
+function showToast(msg, bg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.background = bg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+const CC = ['#FFD700','#FF6B6B','#4CAF50','#2196F3','#FF9800','#AB47BC','#26C6DA'];
+function spawnConfetti() {
+  for (let i = 0; i < 70; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      const sz = 6 + Math.random() * 9;
+      el.style.cssText = `left:${Math.random()*100}vw;top:-12px;width:${sz}px;height:${sz}px;background:${CC[Math.floor(Math.random()*CC.length)]};border-radius:${Math.random()>.4?'50%':'2px'};animation:cfFall ${1.4+Math.random()*1.8}s linear forwards;`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }, i * 22);
+  }
+}
+if (!document.querySelector('#cf-style')) {
+  const s = document.createElement('style'); s.id = 'cf-style';
+  s.textContent = `@keyframes cfFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(105vh) rotate(540deg);opacity:0}}`;
+  document.head.appendChild(s);
+}
+
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (muted) { window.speechSynthesis?.cancel(); sndClaps.pause(); }
+  else speak(document.getElementById('instruction-txt').textContent);
+}
+
+function showEnd() {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'flex';
+  document.getElementById('final-score').textContent   = score;
+  document.getElementById('end-stars').textContent = score >= 9 ? '⭐⭐⭐' : score >= 7 ? '⭐⭐' : '⭐';
+  window.speechSynthesis?.cancel(); playClaps(); spawnConfetti(); setTimeout(spawnConfetti, 800);
+}
+</script>
+</body>
+</html>
