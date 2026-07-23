@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Build My Flower Bouquet · LY4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Nunito',Arial,sans-serif;background:linear-gradient(135deg,#fce4ec 0%,#e8f5e9 50%,#e3f2fd 100%);height:100vh;height:100dvh;display:flex;align-items:stretch;justify-content:center;overflow:hidden;user-select:none;-webkit-user-select:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+
+    /* ── INTRO ── */
+    #intro-screen{position:fixed;inset:0;background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc);display:flex;align-items:center;justify-content:center;border:5px solid #FFD700;z-index:200;cursor:pointer}
+    #intro-logo{width:220px;height:auto;filter:drop-shadow(0 6px 20px rgba(0,0,0,0.5));animation:logoBounce 2s ease-in-out infinite;opacity:0;transition:opacity 0.3s;-webkit-user-drag:none}
+    #intro-logo.loaded{opacity:1}
+    @keyframes logoBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+    /* ── GAME SCREEN ── */
+    #game-screen{display:none;flex-direction:column;width:100%;max-width:860px;height:100%;padding:14px 14px calc(70px + env(safe-area-inset-bottom,0px));overflow:hidden}
+
+    /* ── HEADER ── */
+    .hdr{display:flex;align-items:center;justify-content:space-between;background:white;border-radius:18px;padding:10px 18px;margin-bottom:12px;box-shadow:0 4px 14px rgba(0,0,0,0.1);flex-shrink:0}
+    .hdr-score{font-size:1.1em;font-weight:800;color:#e91e63;min-width:70px}
+    .hdr-title{font-size:clamp(0.75em,2.5vw,1em);color:#6a0dad;font-weight:800;text-align:center}
+    .mute-btn{width:42px;height:42px;min-width:42px;border:2px solid #ddd;border-radius:50%;background:white;font-size:1.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;min-height:44px}
+
+    /* ── PROGRESS ── */
+    .progress-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-shrink:0}
+    .progress-label{font-size:0.9em;color:#777;white-space:nowrap}
+    .progress-bar-wrap{flex:1;height:10px;background:#e0e0e0;border-radius:5px;overflow:hidden}
+    .progress-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#4CAF50,#8BC34A);transition:width 0.5s ease}
+
+    /* ── INSTRUCTION (matches game36/game42) ── */
+    .question-txt{text-align:center;font-size:clamp(1em,3.5vw,1.2em);color:#333;font-weight:800;margin-bottom:10px;padding:0 10px;line-height:1.4;flex-shrink:0}
+
+    /* ── BOUQUET ZONE ── */
+    #bouquet-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:180px;position:relative;padding:4px 0}
+
+    /* ── 4 BOUQUET THEMES via CSS variables ── */
+    /* Level 0 – Garden Bouquet: green wrap, pink */
+    #bouquet-zone{--flower-bg:linear-gradient(160deg,#fff9f0,#fce4ec,#f3e5f5);--border-c:#e91e63;--wrap-top:#a5d6a7;--wrap-bot:#2e7d32;--bow-a:#e91e63;--bow-b:#ad1457}
+    /* Level 1 – Colourful Bouquet: purple wrap, gold bow */
+    #bouquet-zone[data-bouquet="1"]{--flower-bg:linear-gradient(160deg,#f3e5f5,#ede7f6,#e8eaf6);--border-c:#7b1fa2;--wrap-top:#ce93d8;--wrap-bot:#4a148c;--bow-a:#FFD700;--bow-b:#e6b800}
+    /* Level 2 – Spring Bouquet: yellow/orange wrap, coral bow */
+    #bouquet-zone[data-bouquet="2"]{--flower-bg:linear-gradient(160deg,#fffde7,#fff9c4,#fff3e0);--border-c:#ef6c00;--wrap-top:#ffe082;--wrap-bot:#e65100;--bow-a:#ff7043;--bow-b:#bf360c}
+    /* Level 3 – Celebration Bouquet: red wrap, gold bow */
+    #bouquet-zone[data-bouquet="3"]{--flower-bg:linear-gradient(160deg,#ffebee,#fce4ec,#fff8e1);--border-c:#c62828;--wrap-top:#ef9a9a;--wrap-bot:#b71c1c;--bow-a:#FFD700;--bow-b:#f57f17}
+
+    /* Flower display area — oval bouquet head */
+    #flower-display{
+      width:clamp(240px,58vw,310px);
+      background:var(--flower-bg);
+      border:3px dashed var(--border-c);
+      border-radius:50% 50% 40% 40% / 38% 38% 28% 28%;
+      padding:22px 18px 28px;
+      display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+      position:relative;z-index:2;
+      box-shadow:0 6px 24px rgba(0,0,0,0.12),inset 0 2px 8px rgba(255,255,255,0.6);
+      transition:background 0.4s,border-color 0.3s,box-shadow 0.2s;
+    }
+    #bouquet-zone.drag-over #flower-display{border-color:#FFD700;box-shadow:0 0 0 6px rgba(255,215,0,0.45),0 6px 24px rgba(0,0,0,0.12)}
+
+    .slot{width:clamp(60px,13vw,76px);height:clamp(60px,13vw,76px);border-radius:50%;border:2.5px dashed rgba(0,0,0,0.15);background:rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;position:relative;transition:border-color 0.2s;box-shadow:inset 0 1px 4px rgba(0,0,0,0.06)}
+    .slot.filled{border:none;background:transparent}
+    .slot-img{width:clamp(54px,12vw,68px);height:clamp(54px,12vw,68px);object-fit:contain;border-radius:50%;background:white;padding:4px;box-shadow:0 3px 10px rgba(0,0,0,0.18);animation:snapIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both}
+    @keyframes snapIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}
+
+    /* Sparkles */
+    .spark-burst{position:absolute;inset:0;pointer-events:none;z-index:20;overflow:visible}
+    .spark-p{position:absolute;font-size:1em;animation:sparkPop 0.7s ease-out forwards;pointer-events:none}
+    @keyframes sparkPop{0%{opacity:1;transform:translate(0,0) scale(1.3)}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}}
+
+    /* Bouquet wrapper — tapered tissue-paper shape */
+    .bouquet-holder{
+      width:clamp(200px,50vw,260px);height:clamp(110px,24vw,150px);
+      background:linear-gradient(170deg,var(--wrap-top),var(--wrap-bot));
+      clip-path:polygon(2% 0%,98% 0%,50% 100%);
+      margin-top:-18px;z-index:1;position:relative;
+      box-shadow:inset 0 -8px 16px rgba(0,0,0,0.22),0 4px 14px rgba(0,0,0,0.18);
+      transition:background 0.4s;
+    }
+    /* fold lines on cone */
+    .bouquet-holder::before,.bouquet-holder::after{content:'';position:absolute;top:0;width:2px;height:100%;background:rgba(255,255,255,0.22);transform-origin:top center}
+    .bouquet-holder::before{left:33%;transform:skewX(12deg)}
+    .bouquet-holder::after{right:33%;transform:skewX(-12deg)}
+
+    /* CSS Bow — proper overlapping loops */
+    .bouquet-bow-wrap{position:relative;width:76px;height:40px;margin:-8px auto 0;z-index:3}
+    .bow-loop-l,.bow-loop-r{position:absolute;width:36px;height:23px;border-radius:50%;background:var(--bow-a);top:50%;transition:background 0.4s}
+    .bow-loop-l{left:50%;transform-origin:right center;transform:translateX(-100%) translateY(-50%) rotate(-30deg)}
+    .bow-loop-r{left:50%;transform-origin:left center;transform:translateY(-50%) rotate(30deg)}
+    .bow-knot{position:absolute;top:50%;left:50%;width:18px;height:18px;border-radius:50%;background:var(--bow-b);transform:translate(-50%,-50%);z-index:4;box-shadow:0 2px 5px rgba(0,0,0,0.25);transition:background 0.4s}
+
+    /* ── FLOWER TRAY (in document flow — NOT fixed) ── */
+    #flower-tray{
+      background:white;border-radius:20px;
+      box-shadow:0 4px 14px rgba(0,0,0,0.1);
+      padding:12px;margin-top:12px;flex-shrink:0;
+      display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+    }
+
+    /* Flower card (matches games 1–40 card style) */
+    .flower-card{
+      background:white;border-radius:16px;border:3px solid #f0f0f0;
+      padding:10px 6px 8px;
+      display:flex;flex-direction:column;align-items:center;gap:5px;
+      cursor:grab;box-shadow:0 3px 10px rgba(0,0,0,0.08);
+      transition:transform 0.12s,border-color 0.15s,box-shadow 0.15s,opacity 0.2s;
+      touch-action:none;-webkit-tap-highlight-color:transparent;
+      min-height:88px;position:relative;
+    }
+    .flower-card img{width:clamp(44px,10vw,56px);height:clamp(44px,10vw,56px);object-fit:contain;pointer-events:none;-webkit-user-drag:none;display:block;opacity:0;transition:opacity 0.25s}
+    .flower-card img.loaded{opacity:1}
+    .flower-card .fc-name{font-size:clamp(0.6em,1.7vw,0.75em);font-weight:800;color:#444;text-align:center;line-height:1.2;pointer-events:none}
+
+    /* Card states */
+    .flower-card.placed{opacity:0.28;cursor:default;pointer-events:none;border-color:#ddd}
+    .flower-card.placed .fc-name::after{content:' ✓';color:#4caf50}
+    .flower-card.hint{border-color:#FFD700!important;animation:pulseHint 0.9s ease-in-out infinite}
+    .flower-card.wrong-shake{animation:shakeCard 0.45s ease}
+    @keyframes pulseHint{0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0.8)}50%{box-shadow:0 0 0 14px rgba(255,215,0,0)}}
+    @keyframes shakeCard{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+
+    /* ── DRAG CLONE ── */
+    #drag-clone{position:fixed;pointer-events:none;z-index:500;display:none;flex-direction:column;align-items:center;gap:4px;padding:8px 8px 6px;background:white;border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,0.28);border:3px solid #e91e63;transform:translate(-50%,-50%)}
+    #drag-clone img{width:56px;height:56px;object-fit:contain;display:block}
+    #drag-clone .fc-name{font-size:0.75em;font-weight:800;color:#444}
+
+    /* ── RESTART (exact same as games 1–40) ── */
+    .bottom-row{display:flex;justify-content:center;position:fixed;bottom:max(16px,env(safe-area-inset-bottom,0px));left:0;right:0;z-index:50;pointer-events:none}
+    .btn-restart{pointer-events:all;background:linear-gradient(135deg,#FF9800,#F57C00);color:white;border:none;padding:12px 32px;border-radius:40px;font-size:1em;font-family:inherit;font-weight:bold;cursor:pointer;box-shadow:0 5px 14px rgba(255,152,0,0.4);min-height:44px;touch-action:manipulation}
+
+    /* ── END SCREEN ── */
+    #end-screen{display:none;position:fixed;inset:0;background:linear-gradient(160deg,#4a148c,#7b1fa2,#ab47bc);flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:200;text-align:center;padding:30px}
+    .end-trophy{font-size:4.5em;animation:trophySpin 1.5s ease-out}
+    @keyframes trophySpin{from{transform:rotate(-20deg) scale(0)}60%{transform:rotate(10deg) scale(1.1)}to{transform:rotate(0) scale(1)}}
+    .end-title{color:#FFD700;font-size:clamp(1.5em,5vw,2.2em);font-weight:bold;text-shadow:0 3px 10px rgba(0,0,0,0.3)}
+    .end-sub{color:rgba(255,255,255,0.9);font-size:1.05em}
+    .end-score-box{background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.35);border-radius:20px;padding:14px 40px;color:white;font-size:1.8em;font-weight:bold}
+    .end-stars{font-size:2.2em;letter-spacing:4px}
+    .btn-play-again{background:#FFD700;color:#333;border:none;padding:15px 45px;border-radius:40px;font-size:1.2em;font-family:inherit;font-weight:bold;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.2);margin-top:6px;min-height:44px;touch-action:manipulation}
+
+    #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:210}
+
+    /* ── TOAST ── */
+    #toast{position:fixed;top:18%;left:50%;transform:translateX(-50%) scale(0.7);padding:12px 28px;border-radius:50px;font-size:1.4em;font-weight:bold;color:white;pointer-events:none;opacity:0;transition:opacity 0.2s,transform 0.2s;z-index:600;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+    #toast.show{opacity:1;transform:translateX(-50%) scale(1)}
+
+    /* ── BOUQUET ZONE flex ── */
+    #bouquet-zone{flex-shrink:0}
+    #flower-tray{flex-shrink:0}
+
+    @media(max-height:700px){
+      .slot{width:54px;height:54px}.slot-img{width:48px;height:48px}
+      .flower-card{min-height:72px;padding:7px 5px 6px}.flower-card img{width:38px;height:38px}
+      .bouquet-holder{height:80px;width:clamp(160px,42vw,200px)}.bouquet-bow-wrap{width:60px;height:32px}
+      .bow-loop-l,.bow-loop-r{width:28px;height:18px}.bow-knot{width:14px;height:14px}
+      #flower-display{padding:10px 10px 12px;gap:6px;width:clamp(200px,50vw,260px)}
+      #flower-tray{padding:8px;gap:5px;margin-top:8px}
+      .hdr{padding:7px 12px;margin-bottom:8px}
+      .progress-row{margin-bottom:6px}
+      .question-txt{margin-bottom:6px;font-size:clamp(0.82em,2.8vw,1em)}
+    }
+    @media(max-height:580px){
+      .slot{width:46px;height:46px}.slot-img{width:40px;height:40px}
+      .flower-card{min-height:62px;padding:5px 4px 4px}.flower-card img{width:32px;height:32px}
+      #flower-display{gap:4px}
+      #flower-tray{gap:4px;padding:6px}
+    }
+    @media(max-width:380px){
+      .hdr-title{display:none}
+      #flower-tray{grid-template-columns:repeat(4,1fr);gap:5px}
+    }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen" onclick="startGame()">
+  <img id="intro-logo" src="Assets/innovinelogo.png" alt="Innovine"
+    onload="this.classList.add('loaded')" onerror="this.style.display='none'">
+</div>
+
+<div id="toast"></div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-score">🌸 <span id="score-val">0</span> / 6</div>
+    <div class="hdr-title" id="level-name">Garden Bouquet</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+
+  <div class="progress-row">
+    <span class="progress-label">Level <span id="lvl-num">1</span> / 4</span>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+  </div>
+
+  <div class="question-txt" id="instr-txt">Build your bouquet using these flowers!</div>
+
+  <!-- BOUQUET (drop target) -->
+  <div id="bouquet-zone" data-bouquet="0">
+    <div id="flower-display">
+      <div class="slot" id="slot-0"></div>
+      <div class="slot" id="slot-1"></div>
+      <div class="slot" id="slot-2"></div>
+      <div class="slot" id="slot-3"></div>
+      <div class="slot" id="slot-4"></div>
+      <div class="slot" id="slot-5"></div>
+    </div>
+    <div class="bouquet-holder"></div>
+    <div class="bouquet-bow-wrap">
+      <div class="bow-loop-l"></div>
+      <div class="bow-loop-r"></div>
+      <div class="bow-knot"></div>
+    </div>
+  </div>
+
+  <!-- FLOWER TRAY (in flow, like a card — same as games 1–40) -->
+  <div id="flower-tray"></div>
+</div>
+
+<!-- RESTART (fixed bottom, exactly like games 1–40) -->
+<div class="bottom-row">
+  <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+</div>
+
+<div id="drag-clone">
+  <img id="clone-img" src="" alt="">
+  <div class="fc-name" id="clone-name"></div>
+</div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">You built all 4 beautiful bouquets! 💐</div>
+  <div class="end-score-box">🌸 &nbsp;<span id="end-score">0</span> / 24</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">▶ &nbsp;Play Again</button>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+// ── FLOWER DATA ──
+const FLOWERS = {
+  marigold:  { name:'Marigold',  img:'Assets/marigold.png'  },
+  hibiscus:  { name:'Hibiscus',  img:'Assets/hibiscus.png'  },
+  lotus:     { name:'Lotus',     img:'Assets/lotus.png'     },
+  rose:      { name:'Rose',      img:'Assets/rose.png'      },
+  sunflower: { name:'Sunflower', img:'Assets/sunflower.png' },
+  tulip:     { name:'Tulip',     img:'Assets/tulip.png'     },
+  daisy:     { name:'Daisy',     img:'Assets/daisy.png'     },
+  jasmine:   { name:'Jasmine',   img:'Assets/jasmine.png'   },
+};
+
+const LEVELS = [
+  { name:'Garden Bouquet',      required:['marigold','hibiscus','daisy','sunflower','rose','tulip'],       extras:['lotus','jasmine']    },
+  { name:'Colourful Bouquet',   required:['rose','lotus','sunflower','daisy','tulip','jasmine'],            extras:['marigold','hibiscus'] },
+  { name:'Spring Bouquet',      required:['hibiscus','lotus','jasmine','daisy','marigold','tulip'],         extras:['rose','sunflower']   },
+  { name:'Celebration Bouquet', required:['sunflower','rose','hibiscus','jasmine','lotus','marigold'],      extras:['tulip','daisy']      },
+];
+
+const TOTAL = LEVELS.length;
+
+// Preload all images
+Object.values(FLOWERS).forEach(f=>{ const p=new Image(); p.src=f.img; });
+
+// ── STATE ──
+let currentLevel=0, placed=new Set(), nextSlot=0, totalScore=0, levelStars=0, wrongAttempts=0, autoPlacing=false, muted=false;
+
+// ── AUDIO ──
+const sndWrong=new Audio('Assets/wrong.mp3');
+const sndClaps=new Audio('Assets/free_claps.mp3');
+function unlockAudio(){[sndWrong,sndClaps].forEach(s=>{s.play().catch(()=>{});s.pause();s.currentTime=0;});document.removeEventListener('pointerdown',unlockAudio);}
+document.addEventListener('pointerdown',unlockAudio);
+function playSound(s){if(muted)return;s.currentTime=0;s.play().catch(()=>{});}
+function playClaps(){if(muted)return;sndClaps.currentTime=0;sndClaps.play().catch(()=>{});setTimeout(()=>{sndClaps.pause();sndClaps.currentTime=0;},3000);}
+function toggleMute(){muted=!muted;document.getElementById('mute-btn').textContent=muted?'🔇':'🔊';if(muted){window.speechSynthesis?.cancel();sndClaps.pause();}}
+
+// ── TTS (exact copy from game42) ──
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged',()=>window.speechSynthesis.getVoices());
+function speak(text){
+  if(!('speechSynthesis' in window)||muted)return;
+  window.speechSynthesis.cancel();
+  setTimeout(()=>{
+    if(muted)return;
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='en-US';u.rate=0.68;u.pitch=1.0;
+    const v=window.speechSynthesis.getVoices();
+    const voice=v.find(x=>x.lang.startsWith('en')&&!x.name.includes('Google'))||v.find(x=>x.lang.startsWith('en'))||v[0];
+    if(voice)u.voice=voice;
+    window.speechSynthesis.speak(u);
+  },150);
+}
+function speakThen(text,cb){
+  if(!('speechSynthesis' in window)){if(cb)setTimeout(cb,400);return;}
+  window.speechSynthesis.cancel();
+  if(muted){if(cb)setTimeout(cb,100);return;}
+  setTimeout(()=>{
+    if(muted){if(cb)setTimeout(cb,100);return;}
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='en-US';u.rate=0.68;u.pitch=1.0;
+    const v=window.speechSynthesis.getVoices();
+    const voice=v.find(x=>x.lang.startsWith('en')&&!x.name.includes('Google'))||v.find(x=>x.lang.startsWith('en'))||v[0];
+    if(voice)u.voice=voice;
+    if(cb){u.onend=cb;u.onerror=cb;}
+    window.speechSynthesis.speak(u);
+  },150);
+}
+
+// ── TOAST ──
+let toastTimer=null;
+function showToast(msg,bg,dur=1400){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.background=bg;el.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+// ── SHUFFLE ──
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ── LOAD LEVEL ──
+function loadLevel(idx){
+  placed=new Set();nextSlot=0;levelStars=0;wrongAttempts=0;autoPlacing=false;
+  const lvl=LEVELS[idx];
+  document.getElementById('bouquet-zone').dataset.bouquet=idx;
+  document.getElementById('level-name').textContent=lvl.name;
+  document.getElementById('lvl-num').textContent=idx+1;
+  document.getElementById('score-val').textContent=levelStars;
+  document.getElementById('prog-bar').style.width=(idx/TOTAL*100)+'%';
+
+  const names=lvl.required.map(k=>FLOWERS[k].name).join(', ');
+  document.getElementById('instr-txt').textContent='Build your bouquet using: '+names;
+
+  for(let i=0;i<6;i++){const s=document.getElementById('slot-'+i);s.innerHTML='';s.classList.remove('filled');}
+
+  const allKeys=shuffle([...lvl.required,...lvl.extras]);
+  const tray=document.getElementById('flower-tray');
+  tray.innerHTML='';
+  allKeys.forEach(key=>{
+    const f=FLOWERS[key];
+    const card=document.createElement('div');
+    card.className='flower-card';card.dataset.key=key;
+    const img=document.createElement('img');
+    img.alt=f.name;img.draggable=false;
+    img.onload=()=>img.classList.add('loaded');
+    img.onerror=()=>{img.style.opacity='0.3';img.classList.add('loaded');};
+    img.src=f.img;
+    if(img.complete&&img.naturalWidth>0)img.classList.add('loaded');
+    card.appendChild(img);
+    const nm=document.createElement('div');nm.className='fc-name';nm.textContent=f.name;
+    card.appendChild(nm);
+    tray.appendChild(card);
+    card.addEventListener('pointerdown',e=>{
+      if(card.classList.contains('placed')||autoPlacing)return;
+      e.preventDefault();startDrag(e,key,card);
+    });
+  });
+  setTimeout(speakInstruction,500);
+}
+
+function speakInstruction(){
+  const lvl=LEVELS[currentLevel];
+  speak('Build your bouquet using: '+lvl.required.map(k=>FLOWERS[k].name).join(', '));
+}
+
+// ── HINT ── (only 1 flower glows — first unplaced required flower)
+function getHintTarget(){return LEVELS[currentLevel].required.find(k=>!placed.has(k))||null;}
+function showHint(){
+  clearHints();
+  const t=getHintTarget();
+  if(!t)return;
+  const c=document.querySelector('.flower-card[data-key="'+t+'"]');
+  if(c)c.classList.add('hint');
+}
+function clearHints(){document.querySelectorAll('.flower-card.hint').forEach(c=>c.classList.remove('hint'));}
+
+// ── DRAG ──
+function startDrag(e,key,cardEl){
+  const f=FLOWERS[key];
+  const clone=document.getElementById('drag-clone');
+  const cloneImg=document.getElementById('clone-img');
+  cloneImg.alt=f.name;cloneImg.src=f.img;
+  document.getElementById('clone-name').textContent=f.name;
+  moveClone(e,clone);clone.style.display='flex';
+  cardEl.style.opacity='0.3';cardEl.classList.remove('hint');
+  const zone=document.getElementById('bouquet-zone');
+  function onMove(ev){ev.preventDefault();moveClone(ev,clone);zone.classList.toggle('drag-over',isOverZone(ev,zone));}
+  function onUp(ev){
+    ev.preventDefault();clone.style.display='none';zone.classList.remove('drag-over');
+    document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);
+    if(isOverZone(ev,zone))handleDrop(key,cardEl);
+    else{cardEl.style.opacity='1';if(getHintTarget()===key)cardEl.classList.add('hint');}
+  }
+  document.addEventListener('pointermove',onMove,{passive:false});
+  document.addEventListener('pointerup',onUp,{passive:false});
+}
+function moveClone(e,c){c.style.left=e.clientX+'px';c.style.top=e.clientY+'px';}
+function isOverZone(e,z){const r=z.getBoundingClientRect();return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;}
+
+// ── DROP ──
+function handleDrop(key,cardEl){
+  const lvl=LEVELS[currentLevel];
+  if(lvl.required.includes(key)&&!placed.has(key)){
+    clearHints();wrongAttempts=0;placeInSlot(key,cardEl);
+  } else {
+    cardEl.style.opacity='1';
+    cardEl.classList.add('wrong-shake');
+    setTimeout(()=>cardEl.classList.remove('wrong-shake'),460);
+    playSound(sndWrong);wrongAttempts++;
+    if(wrongAttempts===1){
+      showToast('❌ Try again!','#f44336');speak('Try again!');
+      setTimeout(()=>showHint(),900);
+    } else {
+      showToast('💡 Correct answer!','#FF9800');speak('Try again!');
+      setTimeout(()=>{
+        const t=getHintTarget();
+        if(t){clearHints();const c=document.querySelector('.flower-card[data-key="'+t+'"]');
+          if(c&&!placed.has(t)){wrongAttempts=0;autoPlacing=true;placeInSlot(t,c);setTimeout(()=>{autoPlacing=false;},600);}
+        }
+      },900);
+    }
+  }
+}
+
+// ── PLACE IN SLOT ──
+function placeInSlot(key,cardEl){
+  if(nextSlot>=6)return;
+  const slot=document.getElementById('slot-'+nextSlot);
+  nextSlot++;placed.add(key);
+  cardEl.classList.add('placed');cardEl.style.opacity='';
+  const img=document.createElement('img');
+  img.alt=FLOWERS[key].name;img.className='slot-img';img.draggable=false;
+  img.onerror=()=>{img.style.opacity='0.3';};
+  img.src=FLOWERS[key].img;
+  slot.innerHTML='';slot.appendChild(img);slot.classList.add('filled');
+  spawnSparkles(slot);
+  speak('Great choice!');showToast('⭐ Great choice!','#4caf50');
+  levelStars++;totalScore++;
+  document.getElementById('score-val').textContent=levelStars;
+  if(placed.size===6)setTimeout(levelComplete,700);
+}
+
+// ── SPARKLES ──
+const SPARKS=['✨','🌟','⭐','💫','🌸','🌼'];
+function spawnSparkles(slotEl){
+  const burst=document.createElement('div');burst.className='spark-burst';slotEl.appendChild(burst);
+  for(let i=0;i<8;i++){
+    const p=document.createElement('div');p.className='spark-p';p.textContent=SPARKS[i%SPARKS.length];
+    const ang=(i/8)*360,dist=32+Math.random()*22;
+    p.style.setProperty('--tx',Math.cos(ang*Math.PI/180)*dist+'px');
+    p.style.setProperty('--ty',Math.sin(ang*Math.PI/180)*dist+'px');
+    p.style.left=(30+Math.random()*36)+'%';p.style.top=(25+Math.random()*40)+'%';
+    p.style.animationDelay=(i*0.04)+'s';burst.appendChild(p);
+  }
+  setTimeout(()=>burst.remove(),800);
+}
+
+// ── LEVEL COMPLETE ──
+function levelComplete(){
+  autoPlacing=false;
+  currentLevel++;
+  if(currentLevel>=TOTAL){
+    // Last level: confetti+claps+TTS "Amazing!" → then end screen
+    launchConfetti();playClaps();
+    speakThen('Amazing! You built a beautiful bouquet!',()=>{ stopConfetti();setTimeout(showEnd,300); });
+  } else {
+    // Middle levels: confetti+claps+TTS → stop → next level
+    launchConfetti();playClaps();
+    speakThen('Amazing! You built a beautiful bouquet!',()=>{ stopConfetti();loadLevel(currentLevel); });
+  }
+}
+
+// ── END SCREEN ──
+function showEnd(){
+  document.getElementById('end-score').textContent=totalScore;
+  const pct=totalScore/24;
+  document.getElementById('end-stars').textContent=pct>=1?'⭐⭐⭐':pct>=0.7?'⭐⭐':'⭐';
+  document.getElementById('end-screen').style.display='flex';
+  launchConfetti();
+  playClaps();
+  speak('You have done a great job!');
+}
+
+function restartGame(){
+  window.speechSynthesis?.cancel();
+  document.getElementById('end-screen').style.display='none';
+  stopConfetti();currentLevel=0;totalScore=0;loadLevel(0);
+}
+
+// ── CONFETTI ──
+const confCanvas=document.getElementById('confetti-canvas');
+const confCtx=confCanvas.getContext('2d');
+let confParts=[],confRaf=null;
+const CC=['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#f06595','#FFD700'];
+function launchConfetti(){
+  confCanvas.width=window.innerWidth;confCanvas.height=window.innerHeight;
+  confParts=Array.from({length:100},()=>({x:Math.random()*confCanvas.width,y:-20-Math.random()*80,vx:(Math.random()-.5)*3.5,vy:Math.random()*3+1.5,color:CC[Math.floor(Math.random()*CC.length)],w:Math.random()*10+5,h:Math.random()*6+4,rot:Math.random()*360,rv:(Math.random()-.5)*7}));
+  if(confRaf)cancelAnimationFrame(confRaf);animConf();
+}
+function animConf(){
+  confCtx.clearRect(0,0,confCanvas.width,confCanvas.height);
+  confParts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.rv;confCtx.save();confCtx.translate(p.x,p.y);confCtx.rotate(p.rot*Math.PI/180);confCtx.fillStyle=p.color;confCtx.fillRect(-p.w/2,-p.h/2,p.w,p.h);confCtx.restore();});
+  confParts=confParts.filter(p=>p.y<confCanvas.height+30);
+  if(confParts.length>0)confRaf=requestAnimationFrame(animConf);
+}
+function stopConfetti(){if(confRaf){cancelAnimationFrame(confRaf);confRaf=null;}confCtx.clearRect(0,0,confCanvas.width,confCanvas.height);confParts=[];}
+
+// ── START ──
+function startGame(){
+  document.getElementById('intro-screen').style.display='none';
+  document.getElementById('game-screen').style.display='flex';
+  loadLevel(0);
+}
+</script>
+</body>
+</html>
