@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Healthy Food Maze · LY4</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito', Arial, sans-serif;
+      background: linear-gradient(135deg, #f3e5f5 0%, #e8f5e9 50%, #e3f2fd 100%);
+      height: 100vh; height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+      overscroll-behavior: none;
+    }
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
+    }
+    #intro-logo {
+      width: 220px; height: auto;
+      filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5));
+      animation: logoBounce 2s ease-in-out infinite; cursor: pointer;
+    }
+    @keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+    #game-screen {
+      display: none; flex-direction: column; align-items: center;
+      width: 100%; max-width: 520px;
+      height: 100vh; height: 100dvh;
+      padding: 8px 10px; overflow: hidden;
+    }
+    .hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      background: white; border-radius: 16px; padding: 7px 14px;
+      margin-bottom: 6px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      width: 100%; flex-shrink: 0;
+    }
+    .hdr-left { font-size: clamp(0.75em,2.2vw,0.88em); font-weight: 800; color: #2e7d32; min-width: 62px; }
+    .hdr-title { font-size: clamp(0.68em,2.2vw,0.88em); color: #6a0dad; font-weight: 800; text-align: center; }
+    .mute-btn {
+      width: 32px; height: 32px; border: 2px solid #ddd; border-radius: 50%;
+      background: white; font-size: 0.95em; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .instr {
+      font-size: clamp(0.76em,2.2vw,0.9em); color: #444; text-align: center;
+      margin-bottom: 6px; font-weight: 700; flex-shrink: 0; width: 100%;
+    }
+    #canvas-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      width: 100%; overflow: hidden; min-height: 0;
+    }
+    #maze-canvas { display: block; touch-action: none; cursor: crosshair;
+      border-radius: 8px; box-shadow: 0 6px 22px rgba(0,0,0,0.25); }
+
+    #wrong-overlay {
+      position: fixed; display: none; pointer-events: none; z-index: 20;
+      background: rgba(220,30,30,0.72); border-radius: 4px;
+      animation: wrongBlink 0.18s step-end infinite;
+    }
+    @keyframes wrongBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    #feedback {
+      position: fixed; top: 46%; left: 50%; transform: translate(-50%,-50%);
+      background: rgba(30,0,60,0.9); color: white;
+      padding: 12px 22px; border-radius: 18px;
+      font-size: clamp(0.85em,2.8vw,1em); font-weight: bold;
+      text-align: center; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s; z-index: 50;
+      max-width: 82vw; line-height: 1.4;
+    }
+    #feedback.show { opacity: 1; }
+
+    .btn-row {
+      display: flex; gap: 10px; margin-top: 7px; flex-shrink: 0;
+    }
+    #reset-btn {
+      padding: 8px 24px;
+      font-size: clamp(0.8em,2.3vw,0.92em); font-weight: bold;
+      border: none; border-radius: 22px;
+      cursor: pointer; flex-shrink: 0; font-family: inherit;
+      background: #7b1fa2; color: white;
+    }
+
+    #end-screen {
+      display: none; position: fixed; inset: 0;
+      background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc);
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; z-index: 200; text-align: center; padding: 30px;
+    }
+    .end-trophy { font-size: 4.5em; animation: trophySpin 1.5s ease-out; }
+    @keyframes trophySpin { from{transform:rotate(-20deg) scale(0)} 60%{transform:rotate(10deg) scale(1.1)} to{transform:rotate(0) scale(1)} }
+    .end-title { color: #FFD700; font-size: clamp(1.5em,5vw,2.2em); font-weight: bold; text-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+    .end-sub   { color: rgba(255,255,255,0.9); font-size: 1.05em; }
+    .end-score-box {
+      background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.35);
+      border-radius: 20px; padding: 14px 40px; color: white; font-size: 1.8em; font-weight: bold;
+    }
+    .end-stars { font-size: 2.2em; letter-spacing: 4px; }
+    .btn-play-again {
+      background: #FFD700; color: #333; border: none; padding: 15px 45px;
+      border-radius: 40px; font-size: 1.2em; font-family: inherit;
+      font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 210; }
+  </style>
+</head>
+<body>
+
+<div id="intro-screen">
+  <img id="intro-logo" src="Assets/innovinelogo.png" alt="Logo" onclick="startGame()">
+</div>
+
+<div id="game-screen">
+  <div class="hdr">
+    <div class="hdr-left" id="food-count">🥗 0/8</div>
+    <div class="hdr-title">🥗 Healthy Food Maze</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+  <div class="instr">Help Joy reach 🏁 — trace only through healthy foods!</div>
+  <div id="canvas-wrap"><canvas id="maze-canvas"></canvas></div>
+  <div class="btn-row">
+    <button id="reset-btn" onclick="resetMaze()">🔄 Start Over</button>
+  </div>
+</div>
+
+<div id="wrong-overlay"></div>
+<div id="feedback"></div>
+
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">Joy found all the healthy foods!</div>
+  <div class="end-score-box">⭐ &nbsp;<span id="end-score">8</span> / 8 healthy foods</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="playAgain()">▶ &nbsp;Play Again</button>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+// ── MAZE DEFINITION ──
+// 11 cols × 9 rows room grid
+// H[r][c] = passage between room(r,c) and room(r,c+1)  [9 rows × 10 cols]
+// V[r][c] = passage between room(r,c) and room(r+1,c)  [8 rows × 11 cols]
+const COLS = 11, ROWS = 9;
+
+//          c: 0  1  2  3  4  5  6  7  8  9
+const H = [
+  [1,1,1,1,1,0,0,0,0,0], // row 0: solution→(0,4); branch🍩(0,4)→(0,5)
+  [0,0,1,0,1,1,1,1,0,0], // row 1: branch🍦(1,2)←(1,3); solution(1,4)→(1,6); branch🧁(1,6)→(1,8)
+  [0,1,1,1,1,1,1,1,0,0], // row 2: branch🍪(2,1)←(2,3); solution(2,3)→(2,6); branch🎂(2,6)→(2,8)
+  [0,1,1,1,1,1,1,0,0,0], // row 3: branch🍕(3,1)←(3,3); solution(3,3)→(3,7)
+  [0,0,0,0,0,1,1,1,1,1], // row 4: branch🍔(4,5)←(4,7); solution(4,7)→(4,9); branch🍟(4,9)→(4,10)
+  [0,0,0,0,1,1,1,1,1,1], // row 5: branch🍭(5,4)←(5,6); solution(5,6)→(5,9); branch🥤(5,9)→(5,10)
+  [0,0,0,0,0,0,1,1,1,1], // row 6: solution(6,6)→(6,10)
+  [0,0,0,0,0,0,0,0,1,1], // row 7: branch🌭(7,8)←(7,10); (7,9)↔(7,10)
+  [0,0,0,0,0,0,0,0,0,0], // row 8: empty (end row)
+];
+
+//          c: 0  1  2  3  4  5  6  7  8  9  10
+const V = [
+  [0,0,0,1,1,0,0,0,0,0,0], // V0: branch(0,3)→(1,3); solution(0,4)→(1,4)
+  [0,0,0,0,0,0,1,0,0,0,0], // V1: solution(1,6)→(2,6)
+  [0,0,0,1,0,0,0,0,0,0,0], // V2: solution(2,3)→(3,3)
+  [0,0,0,0,0,0,0,1,0,0,0], // V3: solution(3,7)→(4,7)
+  [0,0,0,0,0,0,0,0,0,1,0], // V4: solution(4,9)→(5,9)
+  [0,0,0,0,0,0,1,0,0,0,0], // V5: solution(5,6)→(6,6)
+  [0,0,0,0,0,0,1,0,0,0,1], // V6: branch🍫(6,6)→(7,6); solution(6,10)→(7,10)
+  [0,0,0,0,0,0,0,0,0,0,1], // V7: solution(7,10)→(8,10)
+];
+
+// Food data keyed "r,c"
+const FOOD = {
+  // ── Healthy (8) ──
+  '0,2':  { e:'🍎', name:'Apple',      healthy:true  },
+  '1,5':  { e:'🥕', name:'Carrot',     healthy:true  },
+  '2,4':  { e:'🥦', name:'Broccoli',   healthy:true  },
+  '3,5':  { e:'🍌', name:'Banana',     healthy:true  },
+  '4,8':  { e:'🥝', name:'Kiwi',       healthy:true  },
+  '5,7':  { e:'🍊', name:'Orange',     healthy:true  },
+  '6,8':  { e:'🥭', name:'Mango',      healthy:true  },
+  '7,10': { e:'🥛', name:'Milk',       healthy:true  },
+  // ── Unhealthy (12) ──
+  '0,5':  { e:'🍩', name:'Donut',      healthy:false },
+  '1,2':  { e:'🍦', name:'Ice Cream',  healthy:false },
+  '1,8':  { e:'🧁', name:'Cupcake',    healthy:false },
+  '2,1':  { e:'🍪', name:'Cookie',     healthy:false },
+  '2,8':  { e:'🎂', name:'Cake',       healthy:false },
+  '3,1':  { e:'🍕', name:'Pizza',      healthy:false },
+  '4,5':  { e:'🍔', name:'Burger',     healthy:false },
+  '4,10': { e:'🍟', name:'Fries',      healthy:false },
+  '5,4':  { e:'🍭', name:'Lollipop',   healthy:false },
+  '5,10': { e:'🥤', name:'Soda',       healthy:false },
+  '7,6':  { e:'🍫', name:'Chocolate',  healthy:false },
+  '7,8':  { e:'🌭', name:'Hotdog',     healthy:false },
+};
+const HEALTHY_TOTAL = 8;
+const END = { r: ROWS-1, c: COLS-1 }; // (8,10)
+
+// Full correct solution path
+const SOLUTION_PATH = [
+  {r:0,c:0},{r:0,c:1},{r:0,c:2},{r:0,c:3},{r:0,c:4},
+  {r:1,c:4},{r:1,c:5},{r:1,c:6},
+  {r:2,c:6},{r:2,c:5},{r:2,c:4},{r:2,c:3},
+  {r:3,c:3},{r:3,c:4},{r:3,c:5},{r:3,c:6},{r:3,c:7},
+  {r:4,c:7},{r:4,c:8},{r:4,c:9},
+  {r:5,c:9},{r:5,c:8},{r:5,c:7},{r:5,c:6},
+  {r:6,c:6},{r:6,c:7},{r:6,c:8},{r:6,c:9},{r:6,c:10},
+  {r:7,c:10},{r:8,c:10},
+];
+
+// ── STATE ──
+let CELL = 50, WALL_T = 8, ROOM_W = 42;
+let tracing = false, isAnimating = false, errorShowing = false;
+const wrongOverlay = document.getElementById('wrong-overlay');
+let tracedRooms = [];        // [{r,c}] visited rooms
+let visitedSet  = new Set();
+let charPos = { r:0, c:0 };
+let charAnimPos = null;      // {r,c} fractional, during back-animation
+let lastHealthyRoom = { r:0, c:0 };
+let healthyCount = 0, wrongAttempts = 0;
+let muted = false;
+let pathError = false;
+let hintCell = null;
+let hintWrongCount = 0;
+let sparkles = [], animId = null;
+let lastHoveredKey = null;
+let gameStarted = false;
+
+// ── AUDIO ──
+const sndWrong = new Audio('Assets/wrong.mp3');
+const sndClaps = new Audio('Assets/free_claps.mp3');
+document.addEventListener('pointerdown', function u() {
+  [sndWrong,sndClaps].forEach(s=>{s.play().catch(()=>{});s.pause();s.currentTime=0;});
+  document.removeEventListener('pointerdown',u);
+},{once:true});
+function playSound(s){if(muted)return;s.currentTime=0;s.play().catch(()=>{});}
+function toggleMute(){muted=!muted;document.getElementById('mute-btn').textContent=muted?'🔇':'🔊';}
+function speakThen(text, cb) {
+  if (!window.speechSynthesis || muted) { if (cb) setTimeout(cb, 100); return; }
+  speechSynthesis.cancel();
+  setTimeout(() => {
+    if (muted) { if (cb) setTimeout(cb, 100); return; }
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'en-US'; utt.rate = 0.82; utt.pitch = 1.0;
+    const voices = speechSynthesis.getVoices();
+    const v = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google'))
+           || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    if (v) utt.voice = v;
+    if (cb) { utt.onend = cb; utt.onerror = cb; }
+    speechSynthesis.speak(utt);
+  }, 150);
+}
+function speak(text) { speakThen(text, null); }
+window.speechSynthesis?.getVoices();
+window.speechSynthesis?.addEventListener('voiceschanged', () => speechSynthesis.getVoices());
+
+// ── ASSETS ──
+const boyImg = new Image();
+boyImg.src = 'Assets/boy.png';
+boyImg.onload = () => { if(gameStarted) scheduleDraw(); };
+
+// ── CANVAS ──
+const canvas = document.getElementById('maze-canvas');
+const ctx = canvas.getContext('2d');
+
+function setupCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  const dpr  = window.devicePixelRatio || 1;
+  const maxW = wrap.clientWidth  - 2;   // 1px breathing room each side
+  const maxH = wrap.clientHeight - 2;
+  const cellByW = Math.floor(maxW / COLS);
+  const cellByH = Math.floor(maxH / ROWS);
+  CELL   = Math.max(26, Math.min(cellByW, cellByH, 62));
+  WALL_T = Math.max(5,  Math.round(CELL * 0.15));
+  ROOM_W = CELL - WALL_T;
+  // CSS size
+  const cssW = COLS * CELL + WALL_T;
+  const cssH = ROWS * CELL + WALL_T;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  // Physical pixels for DPR sharpness
+  canvas.width  = cssW * dpr;
+  canvas.height = cssH * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// ── ROOM HELPERS ──
+function roomXY(r, c) {
+  return { x: c * CELL + WALL_T, y: r * CELL + WALL_T };
+}
+function roomCenter(r, c) {
+  return { x: c * CELL + WALL_T + ROOM_W/2, y: r * CELL + WALL_T + ROOM_W/2 };
+}
+function getRoomAt(px, py) {
+  const c = Math.floor(px / CELL);
+  const r = Math.floor(py / CELL);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+  return { r, c };
+}
+function hasPassage(from, to) {
+  const dr = to.r - from.r, dc = to.c - from.c;
+  if (dr===0 && dc===1)  return !!H[from.r][from.c];
+  if (dr===0 && dc===-1) return !!H[from.r][to.c];
+  if (dr===1 && dc===0)  return !!V[from.r][from.c];
+  if (dr===-1 && dc===0) return !!V[to.r][from.c];
+  return false;
+}
+
+// ── DRAWING ──
+const WALL_COLOR   = '#2d2020';
+const CORR_COLOR   = '#fff9ec';
+const START_COLOR  = '#c8e6c9';
+const END_COLOR    = '#fff9c4';
+const HEALTHY_TINT = '#f1f8e9';
+const UNHEALTHY_TINT = '#fce4ec';
+const TRACED_COLOR = '#43a047';
+
+function scheduleDraw() {
+  if (!animId) animId = requestAnimationFrame(() => { animId = null; draw(); });
+}
+
+function draw() {
+  const logW = COLS * CELL + WALL_T;
+  const logH = ROWS * CELL + WALL_T;
+  ctx.clearRect(0, 0, logW, logH);
+
+  // Fill everything with wall color
+  ctx.fillStyle = WALL_COLOR;
+  ctx.fillRect(0, 0, logW, logH);
+
+  // ── draw rooms ──
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const { x, y } = roomXY(r, c);
+      let bg = CORR_COLOR;
+      if (r===0 && c===0) bg = START_COLOR;
+      else if (r===END.r && c===END.c) bg = END_COLOR;
+      else {
+        const f = FOOD[`${r},${c}`];
+        if (f) bg = f.healthy ? HEALTHY_TINT : UNHEALTHY_TINT;
+      }
+      // Tint traced rooms
+      ctx.fillStyle = bg;
+      ctx.fillRect(x, y, ROOM_W, ROOM_W);
+      if (visitedSet.has(`${r},${c}`)) {
+        ctx.fillStyle = 'rgba(67,160,71,0.22)';
+        ctx.fillRect(x, y, ROOM_W, ROOM_W);
+      }
+    }
+  }
+
+  // ── draw passages (knock out walls) ──
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS-1; c++) {
+      if (H[r][c]) { // horizontal passage → fill the vertical wall gap
+        const x = (c+1) * CELL;
+        const y = r * CELL + WALL_T;
+        let bg = CORR_COLOR;
+        if (visitedSet.has(`${r},${c}`) && visitedSet.has(`${r},${c+1}`)) {
+          bg = 'rgba(67,160,71,0.22)';
+          ctx.fillStyle = CORR_COLOR;
+          ctx.fillRect(x, y, WALL_T, ROOM_W);
+        }
+        ctx.fillStyle = bg;
+        ctx.fillRect(x, y, WALL_T, ROOM_W);
+      }
+    }
+  }
+  for (let r = 0; r < ROWS-1; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (V[r][c]) { // vertical passage → fill the horizontal wall gap
+        const x = c * CELL + WALL_T;
+        const y = (r+1) * CELL;
+        ctx.fillStyle = CORR_COLOR;
+        ctx.fillRect(x, y, ROOM_W, WALL_T);
+        if (visitedSet.has(`${r},${c}`) && visitedSet.has(`${r+1},${c}`)) {
+          ctx.fillStyle = 'rgba(67,160,71,0.22)';
+          ctx.fillRect(x, y, ROOM_W, WALL_T);
+        }
+      }
+    }
+  }
+
+  // ── draw traced path line ──
+  if (tracedRooms.length > 1) {
+    const pathCol = pathError ? '#e53935' : TRACED_COLOR;
+    ctx.save();
+    if (!pathError) {
+      ctx.shadowColor = '#81c784'; ctx.shadowBlur = 8;
+    }
+    ctx.beginPath();
+    ctx.strokeStyle = pathCol;
+    ctx.lineWidth = Math.max(4, ROOM_W * 0.3);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    tracedRooms.forEach((rm, i) => {
+      const { x, y } = roomCenter(rm.r, rm.c);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+
+  // ── hint cell pulse ──
+  if (hintCell) {
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 180);
+    const { x: hx, y: hy } = roomXY(hintCell.r, hintCell.c);
+    ctx.save();
+    ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 18 + pulse * 14;
+    ctx.strokeStyle = `rgba(255,215,0,${0.55 + pulse * 0.45})`;
+    ctx.lineWidth = 3.5;
+    ctx.strokeRect(hx + 2, hy + 2, ROOM_W - 4, ROOM_W - 4);
+    ctx.restore();
+    scheduleDraw(); // keep animating while hint is showing
+  }
+
+  // ── food emoji ──
+  const pos = charAnimPos || charPos;
+  const emojiSz = Math.max(14, Math.floor(ROOM_W * 0.62));
+  ctx.font = `${emojiSz}px serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const key in FOOD) {
+    const [fr, fc] = key.split(',').map(Number);
+    if (fr === Math.round(pos.r) && fc === Math.round(pos.c)) continue;
+    const { x: fx, y: fy } = roomCenter(fr, fc);
+    ctx.fillText(FOOD[key].e, fx, fy);
+  }
+
+  // ── end marker ──
+  const ec = roomCenter(END.r, END.c);
+  ctx.font = `${Math.floor(ROOM_W * 0.62)}px serif`;
+  ctx.fillText('🏁', ec.x, ec.y);
+
+  // ── START label ──
+  if (ROOM_W >= 28) {
+    ctx.font = `bold ${Math.max(8, Math.floor(ROOM_W * 0.22))}px Nunito,Arial`;
+    ctx.fillStyle = '#1b5e20';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const sc = roomCenter(0, 0);
+    ctx.fillText('START', sc.x, sc.y + ROOM_W*0.38);
+  }
+
+  // ── character ──
+  const cpos = charAnimPos || { r: charPos.r, c: charPos.c };
+  const cx = cpos.c * CELL + WALL_T + ROOM_W/2;
+  const cy = cpos.r * CELL + WALL_T + ROOM_W/2;
+  const sz = Math.floor(ROOM_W * 0.88);
+  if (boyImg.complete && boyImg.naturalWidth > 0) {
+    ctx.drawImage(boyImg, cx-sz/2, cy-sz/2, sz, sz);
+  } else {
+    ctx.font = `${Math.floor(ROOM_W*0.65)}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('👦', cx, cy);
+  }
+
+  // ── sparkles ──
+  const now = Date.now();
+  sparkles = sparkles.filter(s => now - s.t < 800);
+  sparkles.forEach(s => {
+    const age = (now-s.t)/800, alpha = 1-age;
+    const sc = roomCenter(s.r, s.c);
+    const cols = ['255,215,0','107,203,119','77,150,255','255,146,43'];
+    for (let i=0;i<6;i++) {
+      const ang = (i/6)*Math.PI*2 + age*2, rad = age*ROOM_W*0.65;
+      ctx.beginPath();
+      ctx.arc(sc.x+Math.cos(ang)*rad, sc.y+Math.sin(ang)*rad, Math.max(1.5,3*(1-age)),0,Math.PI*2);
+      ctx.fillStyle = `rgba(${cols[i%cols.length]},${alpha.toFixed(2)})`;
+      ctx.fill();
+    }
+  });
+  if (sparkles.length) scheduleDraw();
+}
+
+// ── MOVEMENT ──
+function canvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const src  = (e.touches && e.touches[0]) ? e.touches[0] : e;
+  // Map CSS pixels → logical canvas pixels (accounts for DPR via CSS size)
+  const sx = (canvas.width  / (window.devicePixelRatio || 1)) / rect.width;
+  const sy = (canvas.height / (window.devicePixelRatio || 1)) / rect.height;
+  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+}
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  if (isAnimating || errorShowing) return;
+  const { x, y } = canvasPos(e);
+  const room = getRoomAt(x, y);
+  if (!room) return;
+  if (tracedRooms.length === 0) {
+    if (room.r===0 && room.c===0) {
+      tracing = true;
+      tracedRooms = [{r:0,c:0}];
+      visitedSet = new Set(['0,0']);
+      lastHoveredKey = '0,0';
+      scheduleDraw();
+    }
+  } else {
+    const last = tracedRooms[tracedRooms.length-1];
+    if (room.r===last.r && room.c===last.c) { tracing=true; lastHoveredKey=`${room.r},${room.c}`; }
+  }
+});
+
+canvas.addEventListener('pointermove', e => {
+  e.preventDefault();
+  if (!tracing || isAnimating || errorShowing) return;
+  const { x, y } = canvasPos(e);
+  const room = getRoomAt(x, y);
+  if (!room) return;
+  const key = `${room.r},${room.c}`;
+  if (key === lastHoveredKey) return;
+  lastHoveredKey = key;
+
+  const last = tracedRooms[tracedRooms.length-1];
+  const dr = room.r-last.r, dc = room.c-last.c;
+  if (Math.abs(dr)+Math.abs(dc) !== 1) return; // not adjacent
+
+  // Back-trace
+  if (tracedRooms.length >= 2) {
+    const prev = tracedRooms[tracedRooms.length-2];
+    if (room.r===prev.r && room.c===prev.c) {
+      const removed = tracedRooms.pop();
+      visitedSet.delete(`${removed.r},${removed.c}`);
+      const rf = FOOD[`${removed.r},${removed.c}`];
+      if (rf?.healthy) { healthyCount--; updateFoodCount(); }
+      charPos = {...tracedRooms[tracedRooms.length-1]};
+      // Recompute lastHealthyRoom
+      recomputeLastHealthy();
+      scheduleDraw(); return;
+    }
+  }
+
+  if (!hasPassage(last, room)) return;   // wall
+  if (visitedSet.has(key)) return;       // loop
+
+  const food = FOOD[key];
+  if (food && !food.healthy) { handleWrongFood(room); return; }
+
+  tracedRooms.push({r:room.r, c:room.c});
+  visitedSet.add(key);
+  charPos = {r:room.r, c:room.c};
+
+  if (food?.healthy) {
+    lastHealthyRoom = {r:room.r, c:room.c};
+    healthyCount++;
+    updateFoodCount();
+    sparkles.push({r:room.r,c:room.c,t:Date.now()});
+    hintWrongCount = 0;
+    hintCell = null;
+  }
+
+  if (room.r===END.r && room.c===END.c) {
+    tracing=false; errorShowing=true; scheduleDraw(); setTimeout(showVictory,300); return;
+  }
+  scheduleDraw();
+});
+
+canvas.addEventListener('pointerup',     () => { tracing=false; });
+canvas.addEventListener('pointercancel', () => { tracing=false; });
+canvas.addEventListener('pointerleave',  () => { tracing=false; });
+
+// ── HINT HELPERS ──
+function currentSolIdx() {
+  for (let si = SOLUTION_PATH.length - 1; si >= 0; si--) {
+    if (visitedSet.has(`${SOLUTION_PATH[si].r},${SOLUTION_PATH[si].c}`)) return si;
+  }
+  return -1;
+}
+
+function findNextHealthyTarget() {
+  const si = currentSolIdx();
+  for (let i = si + 1; i < SOLUTION_PATH.length; i++) {
+    const sp = SOLUTION_PATH[i];
+    if (FOOD[`${sp.r},${sp.c}`]?.healthy) return { cell: sp, idx: i };
+  }
+  return null;
+}
+
+function recomputeLastHealthy() {
+  lastHealthyRoom = {r:0,c:0};
+  for (const rm of tracedRooms) {
+    if (FOOD[`${rm.r},${rm.c}`]?.healthy) lastHealthyRoom = {r:rm.r,c:rm.c};
+  }
+}
+
+// ── WRONG FOOD: go back to last healthy ──
+const feedbackEl = document.getElementById('feedback');
+
+function handleWrongFood(wrongRoom) {
+  wrongAttempts++;
+  hintWrongCount++;
+  tracing = false;
+  errorShowing = true;
+
+  // Boy stays at lastHealthyRoom — never steps into the wrong cell
+  charPos = { ...lastHealthyRoom };
+  charAnimPos = null;
+
+  // 1st wrong → glow next healthy food as hint
+  if (hintWrongCount === 1) {
+    const target = findNextHealthyTarget();
+    hintCell = target ? target.cell : null;
+  } else {
+    hintCell = null;
+  }
+  // Position CSS overlay over wrong cell — no canvas involvement
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const cssScale = rect.width / (canvas.width / dpr);
+  const { x: wx, y: wy } = roomXY(wrongRoom.r, wrongRoom.c);
+  wrongOverlay.style.left   = (rect.left + wx * cssScale) + 'px';
+  wrongOverlay.style.top    = (rect.top  + wy * cssScale) + 'px';
+  wrongOverlay.style.width  = (ROOM_W * cssScale) + 'px';
+  wrongOverlay.style.height = (ROOM_W * cssScale) + 'px';
+  wrongOverlay.style.display = 'block';
+  scheduleDraw();
+
+  playSound(sndWrong);
+  setTimeout(() => {
+    speakThen('Oops! That is not a healthy food. Try another healthy path, or click Start Over to try again.', () => {
+      setTimeout(finishWrong, 400);
+    });
+  }, 600);
+
+  function finishWrong() {
+    wrongOverlay.style.display = 'none';
+    // Erase red path — trim back to lastHealthyRoom
+    let idx = -1;
+    for (let i = tracedRooms.length - 1; i >= 0; i--) {
+      if (tracedRooms[i].r === lastHealthyRoom.r && tracedRooms[i].c === lastHealthyRoom.c) { idx = i; break; }
+    }
+    tracedRooms = idx >= 0 ? tracedRooms.slice(0, idx + 1) : [{ r:0, c:0 }];
+    visitedSet = new Set(tracedRooms.map(r => `${r.r},${r.c}`));
+    charPos = { ...lastHealthyRoom };
+    charAnimPos = null;
+    healthyCount = tracedRooms.filter(r => FOOD[`${r.r},${r.c}`]?.healthy).length;
+    updateFoodCount();
+
+    if (hintWrongCount >= 2) {
+      autoAdvanceToNextHealthy();
+    } else {
+      errorShowing = false;
+      isAnimating = false;
+      scheduleDraw();
+    }
+  }
+}
+
+function autoAdvanceToNextHealthy() {
+  const target = findNextHealthyTarget();
+  if (!target) { errorShowing = false; isAnimating = false; scheduleDraw(); return; }
+
+  const si = currentSolIdx();
+  // Slice the solution path from current position to target (inclusive)
+  const forwardPath = SOLUTION_PATH.slice(si, target.idx + 1);
+
+  animateForward(forwardPath, () => {
+    // Commit all cells along the forward path to state
+    for (const rm of forwardPath) {
+      const key = `${rm.r},${rm.c}`;
+      if (!visitedSet.has(key)) {
+        tracedRooms.push(rm);
+        visitedSet.add(key);
+        const f = FOOD[key];
+        if (f?.healthy) { healthyCount++; lastHealthyRoom = rm; }
+      }
+    }
+    charPos = { ...target.cell };
+    charAnimPos = null;
+    updateFoodCount();
+    sparkles.push({ r: target.cell.r, c: target.cell.c, t: Date.now() });
+    hintWrongCount = 0;
+    hintCell = null;
+    errorShowing = false;
+    isAnimating = false;
+    scheduleDraw();
+  });
+}
+
+function animateForward(path, onDone) {
+  if (path.length < 2) { onDone(); return; }
+  isAnimating = true;
+  let roomIdx = 0, frac = 0;
+  const SPEED = 0.08;
+  function step() {
+    frac += SPEED;
+    if (frac >= 1) { frac = 0; roomIdx++; }
+    if (roomIdx >= path.length - 1) {
+      charAnimPos = { r: path[path.length-1].r, c: path[path.length-1].c };
+      scheduleDraw();
+      setTimeout(onDone, 60);
+      return;
+    }
+    const from = path[roomIdx], to = path[roomIdx + 1];
+    charAnimPos = { r: from.r + (to.r - from.r) * frac, c: from.c + (to.c - from.c) * frac };
+    scheduleDraw();
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function animateBack(backPath, onDone) {
+  if(backPath.length<2){charAnimPos=null;onDone();return;}
+  isAnimating=true;
+  let roomIdx=0;
+  let frac=0;
+  const SPEED=0.1;
+  function step(){
+    frac+=SPEED;
+    if(frac>=1){frac=0;roomIdx++;}
+    if(roomIdx>=backPath.length-1){
+      charAnimPos={r:backPath[backPath.length-1].r,c:backPath[backPath.length-1].c};
+      scheduleDraw();
+      setTimeout(onDone,60);
+      return;
+    }
+    const from=backPath[roomIdx], to=backPath[roomIdx+1];
+    charAnimPos={r:from.r+(to.r-from.r)*frac, c:from.c+(to.c-from.c)*frac};
+    scheduleDraw();
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── UTILS ──
+function updateFoodCount(){
+  document.getElementById('food-count').textContent=`🥗 ${healthyCount}/${HEALTHY_TOTAL}`;
+}
+function resetMaze(){
+  tracedRooms=[];visitedSet=new Set();
+  charPos={r:0,c:0};charAnimPos=null;
+  lastHealthyRoom={r:0,c:0};
+  healthyCount=0;wrongAttempts=0;
+  tracing=false;isAnimating=false;errorShowing=false;
+  pathError=false;
+  hintCell=null; hintWrongCount=0;
+  wrongOverlay.style.display='none';
+  sparkles=[];lastHoveredKey=null;
+  speechSynthesis.cancel();
+  feedbackEl.classList.remove('show');
+  updateFoodCount();scheduleDraw();
+}
+
+// ── VICTORY ──
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0; sndClaps.play().catch(()=>{});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+function showVictory(){
+  const perfect=wrongAttempts===0;
+  document.getElementById('end-stars').textContent=perfect?'⭐⭐⭐':'⭐⭐';
+  document.getElementById('end-score').textContent=healthyCount;
+  errorShowing=false;
+  launchConfetti();
+  playClaps();
+  speakThen('Great job! You found all the healthy foods! Keep eating healthy and stay strong!', () => {
+    setTimeout(() => {
+      document.getElementById('end-screen').style.display='flex';
+      launchConfetti();
+      playClaps();
+    }, 600);
+  });
+}
+function playAgain(){
+  document.getElementById('end-screen').style.display='none';
+  stopConfetti();resetMaze();
+}
+
+// ── CONFETTI ──
+const confCanvas=document.getElementById('confetti-canvas');
+const confCtx=confCanvas.getContext('2d');
+let confParts=[],confRaf=null;
+const CC=['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#f06595'];
+function launchConfetti(){
+  confCanvas.width=window.innerWidth;confCanvas.height=window.innerHeight;
+  confParts=Array.from({length:90},()=>({
+    x:Math.random()*confCanvas.width,y:-20-Math.random()*80,
+    vx:(Math.random()-0.5)*3.5,vy:Math.random()*3+1.5,
+    color:CC[Math.floor(Math.random()*CC.length)],
+    w:Math.random()*10+5,h:Math.random()*6+4,
+    rot:Math.random()*360,rv:(Math.random()-0.5)*7,
+  }));
+  animConf();
+}
+function animConf(){
+  confCtx.clearRect(0,0,confCanvas.width,confCanvas.height);
+  confParts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.rv;
+    confCtx.save();confCtx.translate(p.x,p.y);confCtx.rotate(p.rot*Math.PI/180);
+    confCtx.fillStyle=p.color;confCtx.fillRect(-p.w/2,-p.h/2,p.w,p.h);confCtx.restore();});
+  confParts=confParts.filter(p=>p.y<confCanvas.height+30);
+  if(confParts.length>0)confRaf=requestAnimationFrame(animConf);
+}
+function stopConfetti(){
+  if(confRaf){cancelAnimationFrame(confRaf);confRaf=null;}
+  confCtx.clearRect(0,0,confCanvas.width,confCanvas.height);confParts=[];
+}
+
+// ── START ──
+function startGame(){
+  document.getElementById('intro-screen').style.display='none';
+  document.getElementById('game-screen').style.display='flex';
+  gameStarted=true;
+  // Wait two animation frames so the browser finishes laying out the flex container
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    setupCanvas(); updateFoodCount(); scheduleDraw();
+    setTimeout(() => speak('Help Joy reach the finish flag! Trace your path through healthy foods only. If you get stuck, click Start Over to try again!'), 600);
+  }));
+}
+window.addEventListener('resize',()=>{
+  if(!gameStarted) return;
+  setupCanvas(); scheduleDraw();
+});
+</script>
+</body>
+</html>
