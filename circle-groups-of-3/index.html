@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Circle the Groups of 3 · LY2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', 'Trebuchet MS', Arial, sans-serif;
+      background: linear-gradient(135deg, #fce4ec 0%, #e8f5e9 50%, #e3f2fd 100%);
+      height: 100vh; height: 100dvh;
+      display: flex; align-items: stretch; justify-content: center;
+      overflow: hidden; user-select: none; -webkit-user-select: none;
+      overscroll-behavior: none;
+    }
+
+    /* ── INTRO ── */
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc);
+      display: flex; align-items: center; justify-content: center;
+      border: 5px solid #FFD700; z-index: 200;
+    }
+    #intro-logo {
+      width: 220px; height: auto;
+      filter: drop-shadow(0 6px 20px rgba(0,0,0,0.5));
+      animation: logoBounce 2s ease-in-out infinite;
+      cursor: pointer;
+    }
+    @keyframes logoBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+    /* ── GAME ── */
+    #game-screen {
+      display: none; flex-direction: column;
+      width: 100%; max-width: 520px; height: 100%;
+      padding: 12px 12px 72px;
+      overflow-y: auto;
+    }
+
+    /* Header */
+    .hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      background: white; border-radius: 18px; padding: 9px 16px;
+      margin-bottom: 9px; box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .hdr-score { font-size: 1.1em; font-weight: bold; color: #4CAF50; min-width: 70px; }
+    .hdr-title { font-size: clamp(0.72em,2.5vw,0.92em); color: #6a0dad; font-weight: bold; text-align: center; }
+    .mute-btn {
+      width: 36px; height: 36px; border: 2px solid #ddd; border-radius: 50%;
+      background: white; font-size: 1.05em; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Progress */
+    .progress-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px; flex-shrink: 0;
+    }
+    .progress-label { font-size: 0.88em; color: #777; white-space: nowrap; }
+    .progress-bar-wrap { flex: 1; height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg,#4CAF50,#8BC34A); transition: width 0.5s ease; }
+
+    /* Question */
+    .question-txt {
+      text-align: center; font-size: clamp(0.95em,3vw,1.15em);
+      color: #333; font-weight: bold; margin-bottom: 6px;
+      min-height: 1.5em; flex-shrink: 0;
+    }
+    .draw-tip {
+      text-align: center; font-size: clamp(0.78em,2.2vw,0.88em);
+      color: #888; margin-bottom: 8px; flex-shrink: 0;
+    }
+
+    /* Grid card */
+    .grid-card {
+      background: white; border-radius: 22px;
+      padding: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+
+    /* Grid wrapper */
+    #grid-inner {
+      position: relative;
+      width: 100%;
+    }
+
+    /* Groups grid */
+    #groups-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .group-cell {
+      background: #f7f7f7;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+      overflow: hidden;
+      min-height: 110px;
+      max-height: 160px;
+      aspect-ratio: 1;
+    }
+
+    @keyframes correctPulse {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.07); }
+    }
+    .correct-pulse { animation: correctPulse 0.4s ease; }
+
+    @keyframes wrongShake {
+      0%,100% { transform: translateX(0); }
+      25%     { transform: translateX(-7px); }
+      75%     { transform: translateX(7px); }
+    }
+    .wrong-shake { animation: wrongShake 0.4s ease; }
+
+    /* Images inside cells */
+    .group-img-single {
+      width: 100%; height: 100%; object-fit: contain; display: block;
+    }
+    .group-img-row {
+      display: flex; flex-wrap: wrap;
+      align-items: center; justify-content: center;
+      gap: 3px; width: 100%; height: 100%;
+    }
+    .group-img-multi { object-fit: contain; display: block; }
+    .count-2 .group-img-multi { width: 44%; height: 44%; }
+    .count-3 .group-img-multi { width: 29%; height: 29%; }
+    .count-4 .group-img-multi { width: 42%; height: 42%; }
+
+    /* Draw canvas */
+    #draw-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+      border-radius: 14px;
+    }
+
+    /* Hint guide */
+    #hint-guide {
+      position: absolute;
+      border-radius: 50%;
+      border: 4px dashed #FFD700;
+      pointer-events: none;
+      display: none;
+      animation: hintGlow 0.8s ease-in-out infinite;
+      z-index: 10;
+      transform: translate(-50%, -50%);
+    }
+    #hint-guide.show { display: block; }
+    @keyframes hintGlow {
+      0%,100% { box-shadow: 0 0 10px 4px rgba(255,215,0,0.5); border-color: #FFD700; }
+      50%      { box-shadow: 0 0 26px 10px rgba(255,215,0,0.9); border-color: #FFC200; }
+    }
+
+    /* Bottom */
+    .bottom-row {
+      display: flex; justify-content: center;
+      position: fixed; bottom: 16px; left: 0; right: 0;
+      z-index: 50; pointer-events: none;
+    }
+    .btn-restart {
+      pointer-events: all;
+      background: linear-gradient(135deg,#FF9800,#F57C00);
+      color: white; border: none; padding: 12px 32px;
+      border-radius: 40px; font-size: 1em; font-family: inherit;
+      font-weight: bold; cursor: pointer;
+      box-shadow: 0 5px 14px rgba(255,152,0,0.4);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; top: 18%; left: 50%;
+      transform: translateX(-50%) scale(0.7);
+      padding: 13px 28px; border-radius: 50px;
+      font-size: 1.3em; font-weight: bold; color: white;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 500; white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+    /* Confetti */
+    .confetti { position: fixed; pointer-events: none; z-index: 9998; border-radius: 2px; }
+    @keyframes cfFall {
+      0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+    }
+
+    /* ── END ── */
+    #end-screen {
+      display: none; position: fixed; inset: 0;
+      background: linear-gradient(160deg, #4a148c, #7b1fa2, #ab47bc);
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; z-index: 200; text-align: center; padding: 30px;
+    }
+    .end-trophy  { font-size: 4.5em; animation: trophySpin 1.5s ease-out; }
+    @keyframes trophySpin { from{transform:rotate(-20deg) scale(0)} 60%{transform:rotate(10deg) scale(1.1)} to{transform:rotate(0) scale(1)} }
+    .end-title   { color: #FFD700; font-size: clamp(1.5em,5vw,2.2em); font-weight: bold; text-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+    .end-sub     { color: rgba(255,255,255,0.9); font-size: 1.1em; }
+    .end-score-box {
+      background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.35);
+      border-radius: 20px; padding: 16px 40px; color: white;
+      font-size: 1.8em; font-weight: bold;
+    }
+    .end-stars { font-size: 2.2em; letter-spacing: 4px; }
+    .btn-play-again {
+      background: #FFD700; color: #333; border: none; padding: 15px 45px;
+      border-radius: 40px; font-size: 1.2em; font-family: inherit;
+      font-weight: bold; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2); margin-top: 8px;
+    }
+
+    @media (max-width: 480px) {
+      #game-screen { padding: 9px 9px 70px; }
+      .grid-card { padding: 6px; }
+      #groups-grid { gap: 5px; }
+      .hdr-title { display: none; }
+      .group-cell { min-height: 80px; max-height: 110px; padding: 5px; }
+    }
+    @media (max-height: 700px) {
+      .group-cell { min-height: 75px; max-height: 100px; padding: 4px; }
+      #groups-grid { gap: 4px; }
+      .grid-card { padding: 5px; }
+      .question-txt { font-size: 0.9em; margin-bottom: 4px; }
+      .draw-tip { font-size: 0.78em; margin-bottom: 5px; }
+    }
+    @media (max-height: 600px) {
+      .group-cell { min-height: 65px; max-height: 90px; }
+      .question-txt { font-size: 0.88em; margin-bottom: 3px; }
+      .draw-tip { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── INTRO ── -->
+<div id="intro-screen">
+  <img id="intro-logo" src="Assets/innovinelogo.png" alt="Innovine"
+       onclick="startGame()" onerror="this.style.display='none'">
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<!-- ── GAME ── -->
+<div id="game-screen">
+
+  <div class="hdr">
+    <div class="hdr-score">⭐ <span id="score-val">0</span> / 10</div>
+    <div class="hdr-title">Circle the Groups of 3</div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+  </div>
+
+  <div class="progress-row">
+    <span class="progress-label">Q <span id="q-num">1</span> / 5</span>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="prog-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="question-txt" id="question-txt">Circle all the groups of 3!</div>
+  <div class="draw-tip">✏️ Draw a circle around each group of 3!</div>
+
+  <div class="grid-card">
+    <div id="grid-inner">
+      <div id="groups-grid">
+        <div class="group-cell" id="cell-0"></div>
+        <div class="group-cell" id="cell-1"></div>
+        <div class="group-cell" id="cell-2"></div>
+        <div class="group-cell" id="cell-3"></div>
+        <div class="group-cell" id="cell-4"></div>
+        <div class="group-cell" id="cell-5"></div>
+      </div>
+      <canvas id="draw-canvas"></canvas>
+      <div id="hint-guide"></div>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <button class="btn-restart" onclick="restartGame()">🔄 &nbsp;Restart</button>
+  </div>
+
+</div>
+
+<!-- ── END ── -->
+<div id="end-screen">
+  <div class="end-trophy">🏆</div>
+  <div class="end-title">You have done a great job!</div>
+  <div class="end-sub">You completed all 10 questions!</div>
+  <div class="end-score-box">Score: &nbsp;<span id="final-score">0</span> / 10</div>
+  <div class="end-stars" id="end-stars"></div>
+  <button class="btn-play-again" onclick="restartGame()">▶ &nbsp;Play Again</button>
+</div>
+
+<script>
+const TARGET_COUNT = 3;
+
+/* ─── QUESTIONS ───
+   rpt:false → use image as-is (already shows N objects)
+   rpt:true  → render count copies of the image           */
+const QUESTIONS = [
+  {
+    groups: [
+      { img: 'Assets/2%20erasers.png',                   count: 2, rpt: false },
+      { img: 'Assets/3%20oranges.png',                   count: 3, rpt: false },
+      { img: 'Assets/3kiwis.png',                        count: 3, rpt: false },
+      { img: 'Assets/4%20erasers.png',                   count: 4, rpt: false },
+      { img: 'Assets/4books.png',                        count: 4, rpt: false },
+      { img: 'Assets/2%20mangoes.png',                   count: 2, rpt: false },
+    ]
+  },
+  {
+    groups: [
+      { img: 'Assets/birds1.png',                        count: 3, rpt: false },
+      { img: 'Assets/dogs1.png',                         count: 3, rpt: false },
+      { img: 'Assets/2%20frogs.png',                     count: 2, rpt: false },
+      { img: 'Assets/cat.png',                           count: 4, rpt: true  },
+      { img: 'Assets/duck.png',                          count: 2, rpt: true  },
+      { img: 'Assets/star%20hanging.jpg',                count: 4, rpt: false },
+    ]
+  },
+  {
+    groups: [
+      { img: 'Assets/boys1.png',                         count: 3, rpt: false },
+      { img: 'Assets/strawberry.png',                    count: 3, rpt: false },
+      { img: 'Assets/cherry.png',                        count: 2, rpt: false },
+      { img: 'Assets/cupcakes.png',                      count: 2, rpt: false },
+      { img: 'Assets/elephant.png',                      count: 4, rpt: true  },
+      { img: 'Assets/fish.png',                          count: 4, rpt: true  },
+    ]
+  },
+  {
+    groups: [
+      { img: 'Assets/3%20watermelon.png',                 count: 3, rpt: false },
+      { img: 'Assets/3%20muskmelons.png',                count: 3, rpt: false },
+      { img: 'Assets/whale.png',                         count: 2, rpt: true  },
+      { img: 'Assets/pig.png',                           count: 4, rpt: true  },
+      { img: 'Assets/2%20kiwis.png',                     count: 2, rpt: false },
+      { img: 'Assets/kite.png',                          count: 4, rpt: true  },
+    ]
+  },
+  {
+    groups: [
+      { img: 'Assets/mangoes.png',                       count: 3, rpt: false },
+      { img: 'Assets/balloon.png',                       count: 3, rpt: true  },
+      { img: 'Assets/ice_cream.png',                     count: 2, rpt: true  },
+      { img: 'Assets/butterfly.jpg',                     count: 4, rpt: true  },
+      { img: 'Assets/cow.png',                           count: 4, rpt: true  },
+      { img: 'Assets/car.png',                           count: 2, rpt: true  },
+    ]
+  },
+];
+
+const MAX_SCORE = QUESTIONS.reduce((t,q) => t + q.groups.filter(g=>g.count===TARGET_COUNT).length, 0);
+
+/* Preload */
+QUESTIONS.forEach(q => q.groups.forEach(g => { new Image().src = g.img; }));
+
+/* ─── STATE ─── */
+let curQ            = 0;
+let score           = 0;
+let muted           = false;
+let locked          = false;
+let circledCorrect  = new Set();
+let wrongAttempts   = 0;
+let hintedTargetIdx = -1;
+let permanentCircles = [];
+let permanentTicks   = [];
+let isDrawing        = false;
+let pathPts          = [];
+let curGroups        = [];
+
+/* ─── AUDIO ─── */
+const sndCorrect = new Audio('Assets/correct.mp3');
+const sndWrong   = new Audio('Assets/wrong.mp3');
+const sndClaps   = new Audio('Assets/free_claps.mp3');
+const allSounds  = [sndCorrect, sndWrong, sndClaps];
+
+function unlockAudio() {
+  allSounds.forEach(s => { s.play().catch(() => {}); s.pause(); s.currentTime = 0; });
+  document.removeEventListener('pointerdown', unlockAudio);
+}
+document.addEventListener('pointerdown', unlockAudio);
+
+function play(s) { if (muted) return; s.currentTime = 0; s.play().catch(() => {}); }
+
+function speak(text) { speakThen(text, null); }
+function speakThen(text, cb) {
+  sndClaps.pause(); sndClaps.currentTime = 0;
+  if (!('speechSynthesis' in window)) { if (cb) setTimeout(cb, 400); return; }
+  window.speechSynthesis.cancel();
+  if (muted) { if (cb) setTimeout(cb, 100); return; }
+  setTimeout(() => {
+    if (muted) { if (cb) setTimeout(cb, 100); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.75; u.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const enVoice = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Google'))
+                 || voices.find(v => v.lang.startsWith('en'))
+                 || voices[0];
+    if (enVoice) u.voice = enVoice;
+    if (cb) { u.onend = cb; u.onerror = cb; }
+    window.speechSynthesis.speak(u);
+  }, 150);
+}
+window.speechSynthesis.getVoices();
+window.speechSynthesis.addEventListener('voiceschanged', () => window.speechSynthesis.getVoices());
+
+function playClaps() {
+  if (muted) return;
+  sndClaps.currentTime = 0;
+  sndClaps.play().catch(() => {});
+  setTimeout(() => { sndClaps.pause(); sndClaps.currentTime = 0; }, 3000);
+}
+
+/* ─── INTRO ─── */
+function startGame() {
+  document.getElementById('intro-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display  = 'flex';
+  curQ = 0; score = 0;
+  setupCanvas();
+  loadQuestion();
+}
+
+/* ─── CANVAS ─── */
+function cv()     { return document.getElementById('draw-canvas'); }
+function getCtx() { return cv().getContext('2d'); }
+
+function syncCanvas() {
+  const inner = document.getElementById('grid-inner');
+  const c = cv();
+  c.width  = inner.offsetWidth;
+  c.height = inner.offsetHeight;
+  redrawAll();
+}
+
+function setupCanvas() {
+  syncCanvas();
+  window.addEventListener('resize', () => { syncCanvas(); hideHint(); });
+  cv().addEventListener('pointerdown', onDown);
+  cv().addEventListener('pointermove', onMove);
+  cv().addEventListener('pointerup',   onUp);
+  cv().addEventListener('pointercancel', onUp);
+  cv().addEventListener('pointerleave', onUp);
+}
+
+function getCanvasXY(e) {
+  const r   = cv().getBoundingClientRect();
+  const src = (e.touches && e.touches[0]) ? e.touches[0] : e;
+  return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+function onDown(e) {
+  if (locked) return;
+  e.preventDefault();
+  isDrawing = true;
+  pathPts   = [];
+  pathPts.push(getCanvasXY(e));
+  cv().setPointerCapture(e.pointerId);
+}
+
+let rafPending = false;
+function onMove(e) {
+  if (!isDrawing || locked) return;
+  e.preventDefault();
+  pathPts.push(getCanvasXY(e));
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => {
+    rafPending = false;
+    redrawAll();
+    const ctx = getCtx();
+    ctx.strokeStyle = 'rgba(60,160,80,0.85)';
+    ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pathPts[0].x, pathPts[0].y);
+    pathPts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+  });
+}
+
+function onUp(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  redrawAll();
+  if (pathPts.length < 5) return;
+  evaluateDrawing();
+}
+
+function redrawAll() {
+  const c = cv();
+  const ctx = getCtx();
+  ctx.clearRect(0, 0, c.width, c.height);
+  permanentCircles.forEach(pc => {
+    ctx.save();
+    ctx.strokeStyle = pc.color;
+    ctx.lineWidth = 7;
+    ctx.shadowColor = pc.color;
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.ellipse(pc.cx, pc.cy, pc.rx, pc.ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  });
+  permanentTicks.forEach(pt => {
+    ctx.save();
+    ctx.font = `bold ${pt.size}px sans-serif`;
+    ctx.fillStyle = '#2e7d32';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(46,125,50,0.5)';
+    ctx.shadowBlur = 6;
+    ctx.fillText('✓', pt.cx, pt.cy);
+    ctx.restore();
+  });
+}
+
+/* ─── EVALUATE ─── */
+function evaluateDrawing() {
+  if (locked) return;
+  if (pathPts.length < 8) return;
+
+  let len = 0;
+  for (let i = 1; i < pathPts.length; i++)
+    len += Math.hypot(pathPts[i].x - pathPts[i-1].x, pathPts[i].y - pathPts[i-1].y);
+  if (len < 55) return;
+
+  const cx = pathPts.reduce((s,p) => s+p.x, 0) / pathPts.length;
+  const cy = pathPts.reduce((s,p) => s+p.y, 0) / pathPts.length;
+
+  const angles = pathPts.map(p => Math.atan2(p.y-cy, p.x-cx));
+  const sorted = [...angles].sort((a,b) => a-b);
+  let maxGap = sorted[0] + Math.PI*2 - sorted[sorted.length-1];
+  for (let i = 1; i < sorted.length; i++)
+    maxGap = Math.max(maxGap, sorted[i] - sorted[i-1]);
+  if (maxGap > 120 * Math.PI / 180) return;
+
+  const cellIdx = getCellAtPoint(cx, cy);
+  if (cellIdx === -1) return;
+  if (circledCorrect.has(cellIdx)) return;
+
+  const group = curGroups[cellIdx];
+  if (group.count === TARGET_COUNT) registerCorrect(cellIdx);
+  else                              registerWrong(cellIdx);
+}
+
+function getCellAtPoint(cx, cy) {
+  const inner = document.getElementById('grid-inner');
+  const iRect = inner.getBoundingClientRect();
+  const cells = document.querySelectorAll('.group-cell');
+  for (let i = 0; i < cells.length; i++) {
+    const r = cells[i].getBoundingClientRect();
+    const l = r.left - iRect.left, t = r.top - iRect.top;
+    if (cx >= l && cx <= l + r.width && cy >= t && cy <= t + r.height) return i;
+  }
+  return -1;
+}
+
+function getCellCenter(idx) {
+  const inner = document.getElementById('grid-inner');
+  const iRect = inner.getBoundingClientRect();
+  const cell  = document.querySelectorAll('.group-cell')[idx];
+  const r     = cell.getBoundingClientRect();
+  return {
+    cx: (r.left - iRect.left) + r.width  / 2,
+    cy: (r.top  - iRect.top)  + r.height / 2,
+    rx: r.width  * 0.48,
+    ry: r.height * 0.48,
+  };
+}
+
+/* ─── CORRECT ─── */
+function registerCorrect(cellIdx) {
+  locked = true;
+  hideHint();
+  hintedTargetIdx = -1;
+  wrongAttempts   = 0;
+  circledCorrect.add(cellIdx);
+  score++;
+  document.getElementById('score-val').textContent = score;
+
+  flashPath('#4CAF50', 1.0, 8);
+  showToast('⭐ Excellent!', '#4CAF50');
+
+  document.querySelectorAll('.group-cell')[cellIdx].classList.add('correct-pulse');
+  setTimeout(() => document.querySelectorAll('.group-cell')[cellIdx].classList.remove('correct-pulse'), 450);
+
+  setTimeout(() => {
+    const { cx, cy, rx, ry } = getCellCenter(cellIdx);
+    permanentCircles.push({ cx, cy, rx, ry, color: '#4CAF50' });
+    permanentTicks.push({ cx, cy, size: Math.min(rx, ry) * 1.1 });
+    redrawAll();
+
+    const inner = document.getElementById('grid-inner');
+    const iRect = inner.getBoundingClientRect();
+    spawnSparkle(iRect.left + cx, iRect.top + cy);
+
+    const allDone = getTargets().every(i => circledCorrect.has(i));
+    if (allDone) {
+      const isLast = curQ >= QUESTIONS.length - 1;
+      if (isLast) {
+        speakThen('Excellent, that\'s a group of three!', () => { setTimeout(() => showEnd(true), 300); });
+      } else {
+        speakThen('Excellent, that\'s a group of three!', () => {
+          playClaps(); spawnConfetti();
+          setTimeout(() => { curQ++; loadQuestion(); }, 1800);
+        });
+      }
+    } else {
+      speak('Excellent, that\'s a group of three!');
+      locked = false;
+    }
+  }, 550);
+}
+
+/* ─── WRONG ─── */
+function registerWrong(cellIdx) {
+  locked = true;
+  wrongAttempts++;
+
+  flashPath('#f44336', 0.9, 7);
+  play(sndWrong);
+  speak('Try again! Look for three objects.');
+  showToast('❌ Try again!', '#f44336');
+
+  const cellEl = document.querySelectorAll('.group-cell')[cellIdx];
+  cellEl.classList.add('wrong-shake');
+  setTimeout(() => cellEl.classList.remove('wrong-shake'), 450);
+
+  setTimeout(() => {
+    redrawAll();
+    if (wrongAttempts === 1) {
+      locked = false;
+      showHint();
+    } else {
+      hideHint();
+      autoRevealOne();
+    }
+  }, 850);
+}
+
+/* ─── AUTO REVEAL ONE ─── */
+function autoRevealOne() {
+  const remaining = getTargets().filter(i => !circledCorrect.has(i));
+  const autoIdx = (hintedTargetIdx !== -1 && remaining.includes(hintedTargetIdx))
+    ? hintedTargetIdx
+    : remaining[0];
+
+  if (autoIdx !== undefined) {
+    circledCorrect.add(autoIdx);
+    const { cx, cy, rx, ry } = getCellCenter(autoIdx);
+    permanentCircles.push({ cx, cy, rx, ry, color: '#4CAF50' });
+    redrawAll();
+  }
+
+  wrongAttempts   = 0;
+  hintedTargetIdx = -1;
+  showToast('💡 Correct answer!', '#FF9800');
+
+  const stillRemaining = getTargets().filter(i => !circledCorrect.has(i));
+  if (stillRemaining.length === 0) {
+    const isLast = curQ >= QUESTIONS.length - 1;
+    setTimeout(() => {
+      locked = false;
+      if (isLast) showEnd(false);
+      else { curQ++; loadQuestion(); }
+    }, 2000);
+  } else {
+    setTimeout(() => { locked = false; }, 1200);
+  }
+}
+
+function getTargets() {
+  return curGroups
+    .map((g,i) => g.count === TARGET_COUNT ? i : -1)
+    .filter(i => i !== -1);
+}
+
+/* ─── FLASH PATH ─── */
+function flashPath(color, alpha, width) {
+  redrawAll();
+  if (!pathPts.length) return;
+  const ctx = getCtx();
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(pathPts[0].x, pathPts[0].y);
+  pathPts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ─── HINT ─── */
+function showHint() {
+  const remaining = getTargets().filter(i => !circledCorrect.has(i));
+  if (remaining.length === 0) return;
+  hintedTargetIdx = remaining[0];
+  const { cx, cy, rx, ry } = getCellCenter(hintedTargetIdx);
+  const guide = document.getElementById('hint-guide');
+  guide.style.width  = (rx * 2.1) + 'px';
+  guide.style.height = (ry * 2.1) + 'px';
+  guide.style.left   = cx + 'px';
+  guide.style.top    = cy + 'px';
+  guide.classList.add('show');
+}
+
+function hideHint() {
+  document.getElementById('hint-guide').classList.remove('show');
+}
+
+/* ─── LOAD QUESTION ─── */
+function loadQuestion() {
+  if (curQ >= QUESTIONS.length) { showEnd(true); return; }
+  circledCorrect   = new Set();
+  wrongAttempts    = 0;
+  hintedTargetIdx  = -1;
+  locked           = false;
+  pathPts          = [];
+  permanentCircles = [];
+  permanentTicks   = [];
+
+  document.getElementById('q-num').textContent     = curQ + 1;
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('prog-bar').style.width  = (curQ / QUESTIONS.length * 100) + '%';
+  hideHint();
+
+  curGroups = [...QUESTIONS[curQ].groups].sort(() => Math.random() - 0.5);
+  const allImgs = [];
+  curGroups.forEach((group, i) => {
+    renderGroup(document.getElementById('cell-' + i), group, allImgs);
+  });
+
+  const doSync = () => { syncCanvas(); };
+  if (allImgs.length === 0) { doSync(); } else {
+    let loaded = 0;
+    const onDone = () => { if (++loaded >= allImgs.length) doSync(); };
+    allImgs.forEach(img => {
+      if (img.complete) onDone();
+      else { img.addEventListener('load', onDone); img.addEventListener('error', onDone); }
+    });
+    setTimeout(doSync, 400); // fallback
+  }
+  speak('Circle all the groups of 3!');
+}
+
+function renderGroup(cellEl, group, imgList) {
+  cellEl.innerHTML = '';
+  const makeImg = (src, cls) => {
+    const img = document.createElement('img');
+    img.className = cls; img.draggable = false;
+    img.style.opacity = '0';
+    img.style.transition = 'opacity 0.25s';
+    img.onload  = () => { img.style.opacity = '1'; };
+    img.onerror = () => { img.style.opacity = '0.3'; };
+    img.src = src;
+    if (img.complete && img.naturalWidth > 0) img.style.opacity = '1';
+    if (imgList) imgList.push(img);
+    return img;
+  };
+  if (!group.rpt) {
+    cellEl.appendChild(makeImg(group.img, 'group-img-single'));
+  } else {
+    const row = document.createElement('div');
+    row.className = 'group-img-row count-' + group.count;
+    for (let i = 0; i < group.count; i++) row.appendChild(makeImg(group.img, 'group-img-multi'));
+    cellEl.appendChild(row);
+  }
+}
+
+/* ─── TOAST ─── */
+let toastTimer = null;
+function showToast(msg, bg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.background = bg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+/* ─── SPARKLE ─── */
+function spawnSparkle(x, y) {
+  const cols = ['#FFD700','#FF6B6B','#4CAF50','#2196F3','#FF9800','#AB47BC'];
+  for (let i = 0; i < 8; i++) {
+    const el = document.createElement('div');
+    const angle = (i / 8) * Math.PI * 2;
+    const dist  = 38 + Math.random() * 28;
+    el.style.cssText = `position:fixed;width:8px;height:8px;border-radius:50%;background:${cols[i%cols.length]};left:${x}px;top:${y}px;pointer-events:none;z-index:9999;transition:transform 0.65s ease-out,opacity 0.65s ease-out;transform:translate(-50%,-50%);`;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => {
+      el.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0)`;
+      el.style.opacity = '0';
+    });
+    setTimeout(() => el.remove(), 750);
+  }
+}
+
+/* ─── CONFETTI ─── */
+const CC = ['#FFD700','#FF6B6B','#4CAF50','#2196F3','#FF9800','#AB47BC','#26C6DA'];
+function spawnConfetti() {
+  for (let i = 0; i < 70; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      const sz = 6 + Math.random() * 9;
+      el.style.cssText = `left:${Math.random()*100}vw;top:-12px;width:${sz}px;height:${sz}px;background:${CC[Math.floor(Math.random()*CC.length)]};border-radius:${Math.random()>.4?'50%':'2px'};animation:cfFall ${1.4+Math.random()*1.8}s linear forwards;`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }, i * 22);
+  }
+}
+
+/* ─── MUTE ─── */
+function toggleMute() {
+  muted = !muted;
+  document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+  if (muted) {
+    window.speechSynthesis?.cancel();
+    sndClaps.pause();
+  } else {
+    speak('Circle all the groups of 3!');
+  }
+}
+
+/* ─── END ─── */
+function showEnd(selfDone) {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'flex';
+  document.getElementById('final-score').textContent   = score;
+  document.getElementById('end-stars').textContent     =
+    score >= Math.ceil(MAX_SCORE * 0.8) ? '⭐⭐⭐' :
+    score >= Math.ceil(MAX_SCORE * 0.5) ? '⭐⭐' : '⭐';
+  if (selfDone) {
+    playClaps(); spawnConfetti(); setTimeout(spawnConfetti, 800);
+  }
+}
+
+/* ─── RESTART ─── */
+function restartGame() {
+  hideHint(); pathPts = []; permanentCircles = []; permanentTicks = [];
+  document.getElementById('end-screen').style.display  = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  curQ = 0; score = 0;
+  loadQuestion();
+}
+</script>
+</body>
+</html>
